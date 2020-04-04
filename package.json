@@ -1,0 +1,45 @@
+{
+  "name": "pivo",
+  "version": "0.0.1",
+  "description": "An intent-based programming HTTP client to build evolvable-by-design clients of RESTful APIs",
+  "keywords": [],
+  "author": "Antoine Cheron",
+  "license": "ISC",
+  "main": "build/index.js",
+  "module": "build/index.es.js",
+  "jsnext:main": "build/index.es.js",
+  "scripts": {
+    "build": "rollup -c",
+    "test": "jest --coverage",
+    "lint": "standard",
+    "format": "prettier-standard --format"
+  },
+  "files": [
+    "build"
+  ],
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "11.0.2",
+    "@rollup/plugin-node-resolve": "7.1.1",
+    "@types/jest": "25.2.1",
+    "jest": "25.2.7",
+    "prettier-standard": "^16.2.1",
+    "rollup": "2.3.2",
+    "rollup-plugin-peer-deps-external": "2.2.2",
+    "rollup-plugin-typescript2": "0.27.0",
+    "standard": "14.3.3",
+    "ts-jest": "25.3.1",
+    "typescript": "3.8.3"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "rootDir": "test"
+  },
+  "standard": {
+    "ignore": [
+      "node_modules/",
+      "build/",
+      "coverage/"
+    ]
+  }
+}
