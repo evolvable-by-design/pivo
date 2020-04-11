@@ -3,7 +3,7 @@ import {
   OpenAPIV3Semantics
 } from '../open-api-types'
 import * as JsonLDParser from '../../json-ld-parser'
-import { mapObject, Map } from '../../utils'
+import { mapObject, Map } from '../../utils/transformation'
 
 export default class DocumentExpander {
   private semanticIdentifiers: Map<string>

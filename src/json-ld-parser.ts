@@ -1,4 +1,4 @@
-import { cast, mapObject, Map } from './utils'
+import { cast, mapObject, Map } from './utils/transformation'
 import { OpenAPIV3Semantics } from './open-api/open-api-types'
 import { JsonLD } from './domain'
 

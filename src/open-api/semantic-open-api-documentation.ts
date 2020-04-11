@@ -6,7 +6,11 @@ import {
 } from './open-api-types'
 import { OpenAPIV3 } from 'openapi-types'
 import * as JsonLDParser from '../json-ld-parser'
-import { matchUrlPattern, mapFind, mergeOptionalArrays } from '../utils'
+import {
+  matchUrlPattern,
+  mapFind,
+  mergeOptionalArrays
+} from '../utils/transformation'
 import DocumentExpander from './readers/document-expander'
 import OperationReader from './readers/operation-reader'
 import Option from '../utils/option'
