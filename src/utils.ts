@@ -1,18 +1,11 @@
 export type Map<V> = { [key: string]: V }
 
-export function mapObject<A, B> (
-  object: Map<A>,
-  mapper: (k: string, value: A) => [string, B] | undefined
-): Map<B> {
-  return Object.entries(object)
-    .map(([key, value]) => mapper(key, value))
-    .filter(el => el !== undefined)
-    .reduce(reduceObject, {})
-}
-
-export function reduceObject<A> (res: Map<A>, [key, value]: [string, A]) {
-  res[key] = value
-  return res
+export function cast<A> (value: any, constructor: { new (): A }): A {
+  if (value instanceof constructor) {
+    return value as A
+  } else {
+    throw new Error('Invalid cast exception')
+  }
 }
 
 export function mapFind<A, B> (
@@ -24,6 +17,26 @@ export function mapFind<A, B> (
     if (res !== undefined) return res
   }
   return undefined
+}
+
+export function mapObject<B> (
+  object: Object,
+  mapper: (k: string, value: any) => [string, B] | undefined
+): Object {
+  return Object.entries(object)
+    .map(([key, value]) => mapper(key, value))
+    .filter(el => el !== undefined)
+    .reduce(reduceObject, {})
+}
+
+export function mapMap<A, B> (
+  object: Map<A>,
+  mapper: (k: string, value: A) => [string, B] | undefined
+): Map<B> {
+  return Object.entries(object)
+    .map(([key, value]) => mapper(key, value))
+    .filter(el => el !== undefined)
+    .reduce(reduceObject, {})
 }
 
 export function matchUrlPattern (url: string, pattern: string): boolean {
@@ -43,14 +56,19 @@ export function matchUrlPattern (url: string, pattern: string): boolean {
     .reduce((match, el) => match && el, true)
 }
 
+export function mergeOptionalArrays<A> (arr1: A[] = [], arr2: A[] = []): A[] {
+  return arr1.concat(arr2)
+}
+
+export function reduceObject<A> (res: Map<A>, [key, value]: [string, A]) {
+  res[key] = value
+  return res
+}
+
 export function removeQueryAndTrailingSlash (url: string): string {
   const urlWithoutQuery =
     url.indexOf('?') === -1 ? url : url.slice(0, url.indexOf('?'))
   return urlWithoutQuery.endsWith('/')
     ? urlWithoutQuery.slice(0, urlWithoutQuery.length - 1)
     : urlWithoutQuery
-}
-
-export function mergeOptionalArrays<A> (arr1: A[] = [], arr2: A[] = []): A[] {
-  return arr1.concat(arr2)
 }

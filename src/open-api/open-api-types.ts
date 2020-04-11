@@ -1,17 +1,4 @@
-export declare namespace JsonLD {
-  interface Context {
-    [key: string]: string | Entry
-  }
-
-  interface Entry {
-    '@id': string
-    '@type'?: string
-  }
-
-  interface Relation {
-    '@relation'?: string | string[]
-  }
-}
+import { JsonLD } from '../domain'
 
 // Extended from the work of @kogosoftwarellc at https://github.com/kogosoftwarellc/open-api/tree/master/packages/openapi-types#readme
 export declare namespace OpenAPIV3Semantics {
@@ -209,11 +196,12 @@ export declare namespace OpenAPIV3Semantics {
     explode?: boolean
     allowReserved?: boolean
   }
+  interface ContentsObject {
+    [media: string]: MediaTypeObject
+  }
   interface RequestBodyObject {
     description?: string
-    content: {
-      [media: string]: MediaTypeObject
-    }
+    content: ContentsObject
     required?: boolean
   }
   interface ResponsesObject {
@@ -224,9 +212,7 @@ export declare namespace OpenAPIV3Semantics {
     headers?: {
       [header: string]: ReferenceObject | HeaderObject
     }
-    content?: {
-      [media: string]: MediaTypeObject
-    }
+    content?: ContentsObject
     links?: {
       [link: string]: ReferenceObject | LinkObject
     }
@@ -423,6 +409,9 @@ export declare namespace ExpandedOpenAPIV3Semantics {
     name: string
     in: string
   }
+  interface ContentsObject {
+    [media: string]: MediaTypeObject
+  }
   interface HeaderObject extends ParameterBaseObject {}
   type ParameterBaseObject = {
     description?: string
@@ -437,9 +426,7 @@ export declare namespace ExpandedOpenAPIV3Semantics {
     examples?: {
       [media: string]: ExampleObject
     }
-    content?: {
-      [media: string]: MediaTypeObject
-    }
+    content?: ContentsObject
   } & JsonLD.Entry
   type NonArraySchemaObjectType =
     | 'null'
@@ -534,9 +521,7 @@ export declare namespace ExpandedOpenAPIV3Semantics {
   }
   interface RequestBodyObject {
     description?: string
-    content: {
-      [media: string]: MediaTypeObject
-    }
+    content: ContentsObject
     required?: boolean
   }
   interface ResponsesObject {
@@ -547,9 +532,7 @@ export declare namespace ExpandedOpenAPIV3Semantics {
     headers?: {
       [header: string]: HeaderObject
     }
-    content?: {
-      [media: string]: MediaTypeObject
-    }
+    content?: ContentsObject
     links?: {
       [link: string]: LinkObject
     }
