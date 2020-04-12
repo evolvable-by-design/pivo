@@ -154,6 +154,7 @@ export declare namespace OpenAPIV3Semantics {
     externalDocs?: ExternalDocumentationObject
     example?: any
     deprecated?: boolean
+    'x-affiliation'?: 'parent' | 'this' // addition
   } & JsonLD.Entry
   interface DiscriminatorObject {
     propertyName: string
@@ -226,6 +227,7 @@ export declare namespace OpenAPIV3Semantics {
     requestBody?: any
     description?: string
     server?: ServerObject
+    'x-affiliation'?: 'parent' | 'this' // addition
   } & JsonLD.Relation
   interface CallbackObject {
     [url: string]: PathItemObject
@@ -385,6 +387,7 @@ export declare namespace ExpandedOpenAPIV3Semantics {
     parameters?: Array<ParameterObject>
   }
   type OperationObject = {
+    url: string
     verb: string
     tags?: string[]
     summary?: string
@@ -400,6 +403,7 @@ export declare namespace ExpandedOpenAPIV3Semantics {
     deprecated?: boolean
     security?: SecurityRequirementObject[]
     servers?: ServerObject[]
+    userShouldAuthenticate?: boolean
   } & JsonLD.Entry
   interface ExternalDocumentationObject {
     description?: string
@@ -427,6 +431,7 @@ export declare namespace ExpandedOpenAPIV3Semantics {
       [media: string]: ExampleObject
     }
     content?: ContentsObject
+    operationId?: string // addition
   } & JsonLD.Entry
   type NonArraySchemaObjectType =
     | 'null'
@@ -480,6 +485,7 @@ export declare namespace ExpandedOpenAPIV3Semantics {
     externalDocs?: ExternalDocumentationObject
     example?: any
     deprecated?: boolean
+    'x-affiliation'?: 'parent' | 'this' // addition
   } & JsonLD.Entry
   interface DiscriminatorObject {
     propertyName: string
@@ -546,6 +552,7 @@ export declare namespace ExpandedOpenAPIV3Semantics {
     requestBody?: any
     description?: string
     server?: ServerObject
+    'x-affiliation'?: 'parent' | 'this' // addition
   } & JsonLD.Relation
   interface CallbackObject {
     [url: string]: PathItemObject

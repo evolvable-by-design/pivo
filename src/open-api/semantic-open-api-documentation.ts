@@ -43,7 +43,7 @@ export default class SemanticOpenApiDoc {
     this.findOperation(target).nonEmpty()
 
   public findOperation (
-    identifier: string
+    identifier?: string
   ): Option<ExpandedOpenAPIV3Semantics.OperationObject> {
     return this._findOperation(
       operation =>

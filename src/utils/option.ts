@@ -11,6 +11,10 @@ export default abstract class Option<A> {
       : (new Empty() as Option<A>)
   }
 
+  static empty<A> (): Option<A> {
+    return new Empty()
+  }
+
   isEmpty (): boolean {
     return this instanceof Empty
   }
@@ -23,13 +27,17 @@ export default abstract class Option<A> {
     return this.flatMap(value => Option.ofOptional(mapper(value)))
   }
 
+  abstract flatMap<B> (mapper: (a: A) => Option<B>): Option<B>
+
   filter (predicate: (a: A) => boolean): Option<A> {
     return this.flatMap(value =>
       predicate(value) ? Option.ofOptional() : Option.of(value)
     )
   }
 
-  abstract flatMap<B> (mapper: (a: A) => Option<B>): Option<B>
+  ifPresent (consumer: (a: A) => void): void {
+    this.map(consumer)
+  }
 
   getOrElse (alternative: A): A {
     return this.value || alternative

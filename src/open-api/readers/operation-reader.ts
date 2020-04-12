@@ -18,12 +18,18 @@ export default class OperationReader {
   static responseBodySchema (
     operation: ExpandedOpenAPIV3Semantics.OperationObject
   ): Option<ExpandedOpenAPIV3Semantics.SchemaObject> {
-    return Option.ofOptional(operation.responses)
-      .map(responses => {
-        const response = responses['200'] || responses['201']
-        return response?.content
-      })
+    return this.responseSchema(operation)
+      .map(response => response?.content)
       .map(contents => _selectContent(contents).schema)
+  }
+
+  static responseSchema (
+    operation: ExpandedOpenAPIV3Semantics.OperationObject,
+    statusCode?: number
+  ): Option<ExpandedOpenAPIV3Semantics.ResponseObject> {
+    return Option.ofOptional(operation.responses).map(responses =>
+      statusCode !== undefined ? responses[statusCode.toString()] : responses[0]
+    )
   }
 
   static findTypeInResponse (

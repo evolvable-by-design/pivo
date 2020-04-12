@@ -70,6 +70,10 @@ export function reduceObject (acc: object, [key, value]: [string, unknown]) {
   return acc
 }
 
+export function flattenArray<A> (acc: Array<A>, value: Array<A>): Array<A> {
+  return acc.concat(value)
+}
+
 export function removeQueryAndTrailingSlash (url: string): string {
   const urlWithoutQuery =
     url.indexOf('?') === -1 ? url : url.slice(0, url.indexOf('?'))

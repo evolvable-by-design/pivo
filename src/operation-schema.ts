@@ -2,10 +2,10 @@ import { ExpandedOpenAPIV3Semantics } from './open-api/open-api-types'
 import OperationReader from './open-api/readers/operation-reader'
 import Option from './utils/option'
 import { Map, reduceObject } from './utils/transformation'
-import { PivoParameterSchema, PivoApiOperationSchema } from './domain'
+import { PivoParameterSchema } from './domain'
 
 export default class OperationSchema {
-  constructor (readonly schema: PivoApiOperationSchema) {}
+  constructor (readonly schema: ExpandedOpenAPIV3Semantics.OperationObject) {}
 
   public hasParameters (): boolean {
     return this.getParameters().length !== 0

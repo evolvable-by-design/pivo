@@ -1,18 +1,20 @@
 import { ExpandedOpenAPIV3Semantics } from './open-api-types'
 import OpenApiReaders from './readers'
+import Option from '../utils/option'
 
-export function updateRequestBodySchema (
-  operation: ExpandedOpenAPIV3Semantics.OperationObject,
-  schema: ExpandedOpenAPIV3Semantics.SchemaObject
-): ExpandedOpenAPIV3Semantics.OperationObject {
+export function updateRequestBodySchema<
+  A extends ExpandedOpenAPIV3Semantics.OperationObject
+> (operation: A, schema: ExpandedOpenAPIV3Semantics.SchemaObject): A {
   const operationCopy = Object.assign({}, operation)
 
-  if (operationCopy?.requestBody) {
-    const contents = operationCopy?.requestBody?.content
-    const content =
-      contents['application/json'] || contents[Object.keys(contents)[0]]
-    content.schema = schema
-  }
+  Option.ofOptional(operationCopy?.requestBody?.content)
+    .map(
+      contents =>
+        contents['application/json'] || contents[Object.keys(contents)[0]]
+    )
+    .ifPresent(content => {
+      content.schema = schema
+    })
 
   return operationCopy
 }
