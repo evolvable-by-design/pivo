@@ -1,4 +1,5 @@
 import { OpenAPIV3 } from 'openapi-types'
+import { ExpandedOpenAPIV3Semantics } from './open-api/open-api-types'
 
 export declare namespace JsonLD {
   interface Context {
@@ -15,18 +16,24 @@ export declare namespace JsonLD {
   }
 }
 
-export type PivoApiOperationSchema = OpenAPIV3.OperationObject & {
+export type PivoApiOperationSchema = ExpandedOpenAPIV3Semantics.OperationObject & {
   userShouldAuthenticate: boolean
-  parameters: PivoParameterSchema[]
+  parameters: Array<ExpandedOpenAPIV3Semantics.ParameterObject>
   verb: HttpVerb
   requestBody: object
+  url: string
 }
 
 export type PivoRequestBody = OpenAPIV3.RequestBodyObject & {
   properties: { [key: string]: OpenAPIV3.SchemaObject }
   required?: string[]
 }
-export type PivoParameterSchema = OpenAPIV3.ParameterObject
+export type PivoParameterSchema = {
+  name: string
+  description?: string
+  required: boolean
+  schema: ExpandedOpenAPIV3Semantics.SchemaObject
+}
 
 export type PivoSchemaObject = {
   properties: { [key: string]: OpenAPIV3.SchemaObject }

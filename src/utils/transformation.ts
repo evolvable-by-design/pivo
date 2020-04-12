@@ -26,7 +26,7 @@ export function mapObject<B> (
   return Object.entries(object)
     .map(([key, value]) => mapper(key, value))
     .filter(el => el !== undefined)
-    .reduce(reduceObject, {})
+    .reduce(reduceMap, {})
 }
 
 export function mapMap<A, B> (
@@ -36,7 +36,7 @@ export function mapMap<A, B> (
   return Object.entries(object)
     .map(([key, value]) => mapper(key, value))
     .filter(el => el !== undefined)
-    .reduce(reduceObject, {})
+    .reduce(reduceMap, {})
 }
 
 export function matchUrlPattern (url: string, pattern: string): boolean {
@@ -60,9 +60,14 @@ export function mergeOptionalArrays<A> (arr1: A[] = [], arr2: A[] = []): A[] {
   return arr1.concat(arr2)
 }
 
-export function reduceObject<A> (res: Map<A>, [key, value]: [string, A]) {
+export function reduceMap<A> (res: Map<A>, [key, value]: [string, A]) {
   res[key] = value
   return res
+}
+
+export function reduceObject (acc: object, [key, value]: [string, unknown]) {
+  acc[key] = value
+  return acc
 }
 
 export function removeQueryAndTrailingSlash (url: string): string {

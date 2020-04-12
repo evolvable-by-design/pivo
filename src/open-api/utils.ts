@@ -17,7 +17,7 @@ export function updateRequestBodySchema (
   return operationCopy
 }
 
-function allRequiredParamsHaveAValue (
+export function allRequiredParamsHaveAValue (
   operation: ExpandedOpenAPIV3Semantics.OperationObject,
   parameters: object = {},
   body: object = {}
