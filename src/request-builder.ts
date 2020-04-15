@@ -2,15 +2,17 @@ import OperationSchema from './operation-schema'
 import { ExpandedOpenAPIV3Semantics } from './open-api/open-api-types'
 import Option from './utils/option'
 
+import { AxiosRequestConfig, Method } from 'axios'
+
 // TODO: merge parameters and body into a single parameters object
 export function buildRequest (
   operation: OperationSchema,
   parameters: object,
   body: object
-) {
+): AxiosRequestConfig {
   if (supportsJson(operation)) {
     return {
-      method: operation.schema.verb,
+      method: operation.schema.verb as Method,
       url: buildUrl(operation, parameters),
       data: buildBody(operation.getRequestBodySchema(), body),
       headers: buildHeaders(operation, parameters)

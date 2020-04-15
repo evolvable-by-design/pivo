@@ -25,7 +25,7 @@ export default class OperationReader {
 
   static responseSchema (
     operation: ExpandedOpenAPIV3Semantics.OperationObject,
-    statusCode?: number
+    statusCode?: number | string
   ): Option<ExpandedOpenAPIV3Semantics.ResponseObject> {
     return Option.ofOptional(operation.responses).map(responses =>
       statusCode !== undefined ? responses[statusCode.toString()] : responses[0]

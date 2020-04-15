@@ -23,6 +23,7 @@ import {
 } from './domain'
 import { updateRequestBodySchema } from './open-api/utils'
 import OperationReader from './open-api/readers/operation-reader'
+import HttpClient from './http-client'
 
 class SemanticData {
   readonly resourceSchema?: ExpandedOpenAPIV3Semantics.SchemaObject
@@ -34,7 +35,7 @@ class SemanticData {
   constructor (
     readonly data: HypermediaData<unknown> | any,
     readonly apiDocumentation: SemanticOpenApiDocumentation,
-    private httpCaller: unknown,
+    private httpClient: HttpClient,
     private originHttpResponse: AxiosResponse<any>,
     resourceSchema?: ExpandedOpenAPIV3Semantics.SchemaObject,
     readonly responseSchema?: ExpandedOpenAPIV3Semantics.ResponseObject
@@ -118,7 +119,7 @@ class SemanticData {
                 new SemanticData(
                   v,
                   this.apiDocumentation,
-                  this.httpCaller,
+                  this.httpClient,
                   this.originHttpResponse,
                   schema.items,
                   responseSchema.getOrUndefined()
@@ -132,7 +133,7 @@ class SemanticData {
             return new SemanticData(
               value,
               this.apiDocumentation,
-              this.httpCaller,
+              this.httpClient,
               this.originHttpResponse,
               schema,
               responseSchema.getOrUndefined()
@@ -156,7 +157,7 @@ class SemanticData {
           result.operation.verb === 'get' &&
           !new ApiOperation(
             result.operation,
-            this.apiDocumentation
+            this.httpClient
           ).missesRequiredParameters()
       )
       .map(result => {
@@ -185,14 +186,14 @@ class SemanticData {
       const toInvoke = resourcesContainingValue[0]
       const linkedResourceData = await new ApiOperation(
         toInvoke.operation,
-        this.apiDocumentation
+        this.httpClient
       ).invoke()
 
       return Option.of(
         new SemanticData(
           linkedResourceData.data.data[toInvoke.pathInResponse],
           this.apiDocumentation,
-          this.httpCaller,
+          this.httpClient,
           linkedResourceData.data.originHttpResponse,
           linkedResourceData.data?.resourceSchema?.properties?.[
             toInvoke.pathInResponse
@@ -326,7 +327,7 @@ class SemanticData {
         new SemanticData(
           result.value,
           this.apiDocumentation,
-          this.httpCaller,
+          this.httpClient,
           this.originHttpResponse
           // result.documentation, -> HeaderObject is not a SchemaObject
         )

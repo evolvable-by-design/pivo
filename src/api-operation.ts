@@ -1,9 +1,12 @@
-import SemanticOpenApiDoc from './open-api/semantic-open-api-documentation'
+import { AxiosRequestConfig } from 'axios'
+
 import { allRequiredParamsHaveAValue } from './open-api/utils'
 import OperationSchema from './operation-schema'
 import * as RequestBuilder from './request-builder'
 import SemanticHttpResponse from './semantic-http-response'
 import { ExpandedOpenAPIV3Semantics } from './open-api/open-api-types'
+import HttpClient from './http-client'
+import { AuthenticationRequiredError } from './errors'
 
 export default class ApiOperation {
   private operationSchema: OperationSchema
@@ -11,7 +14,7 @@ export default class ApiOperation {
 
   constructor (
     private operation: ExpandedOpenAPIV3Semantics.OperationObject,
-    private apiDocumentation: SemanticOpenApiDoc
+    private httpClient: HttpClient
   ) {
     this.operationSchema = new OperationSchema(operation)
     this.userShouldAuthenticate = operation.userShouldAuthenticate || false
@@ -19,22 +22,14 @@ export default class ApiOperation {
 
   public hasParameters = () => this.operationSchema.hasParameters()
 
-  /*async call (values, parameters) {
-    if (this.userShouldAuthenticate) {
-      throw new AuthenticationRequiredError()
-    }
-
-    return this.httpCaller.semanticCall(
-      this.buildRequest(values, parameters),
-      this.operation
-    )
-  }*/
-
   public async invoke (parameters?: object): Promise<SemanticHttpResponse> {
-    // First, check that parameters are valid
-    // Second, build the request
-    // Third, make the call
-    return new SemanticHttpResponse()
+    if (this.operationSchema.schema.userShouldAuthenticate) {
+      throw new AuthenticationRequiredError()
+    } else {
+      // TODO: First, check that parameters are valid
+      const request = this.buildRequest(parameters || {})
+      return await this.httpClient.semanticCall(request, this.operationSchema)
+    }
   }
 
   public missesRequiredParameters (): boolean {
@@ -46,7 +41,7 @@ export default class ApiOperation {
     return this.operation.verb === 'get' ? this.buildRequest({}) : undefined
   }
 
-  public buildRequest (parameters: object) {
+  public buildRequest (parameters: object): AxiosRequestConfig {
     // TODO: return details about missing params
     const { params, body } = this.computeParamsAndBody(parameters)
 

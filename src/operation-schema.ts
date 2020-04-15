@@ -108,6 +108,12 @@ export default class OperationSchema {
       .reduce(reduceObject, {})
   }
 
+  public getResponseSchema (
+    statusCode: number | string
+  ): Option<ExpandedOpenAPIV3Semantics.ResponseObject> {
+    return OperationReader.responseSchema(this.schema, statusCode)
+  }
+
   private schemaToParameters (
     schema: ExpandedOpenAPIV3Semantics.SchemaObject
   ): PivoParameterSchema[] {
