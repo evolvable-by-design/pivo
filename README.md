@@ -8,3 +8,9 @@
 - Readme in progress, I focus on the library at first and will document it when it will be ready to use
 - Contributing guide not done yet
 - Do not hesitate to get in touch with me for more information
+
+## Todo
+
+- Tests
+- Support research function
+- Make the library way more robust
