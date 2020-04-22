@@ -48,8 +48,6 @@ export type HypermediaControlDetailed = {
   parameters: object
 }
 
-type HttpVerb = 'get' | 'put' | 'post' | 'delete' | 'patch' | 'options'
-
 export type ActionSemantics = string
 export type DataSemantics = string
 export type RelationSemantics = string

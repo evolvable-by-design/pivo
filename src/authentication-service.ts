@@ -1,11 +1,12 @@
 const tokenLocalStorageKey = 'Authorization'
 
 class AuthenticationService {
-  constructor () {}
-
-  static isAuthenticated = () =>
-    AuthenticationService.getToken() !== undefined &&
-    AuthenticationService.getToken() !== null
+  static isAuthenticated (): boolean {
+    return (
+      AuthenticationService.getToken() !== undefined &&
+      AuthenticationService.getToken() !== null
+    )
+  }
 
   static getToken () {
     return window.localStorage.getItem(tokenLocalStorageKey)

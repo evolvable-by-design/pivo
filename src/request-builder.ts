@@ -27,7 +27,7 @@ export function buildRequest (
 function supportsJson (operation: OperationSchema): boolean {
   return (
     operation.schema.requestBody !== undefined &&
-    operation.schema.requestBody.content['application/json'] === undefined
+    operation.schema.requestBody.content['application/json'] !== undefined
   )
 }
 
@@ -71,13 +71,13 @@ function buildBody (
 ): object {
   return requestBodySchema
     .filter(schema => ['object', 'array'].includes(schema.type))
-    .map(schema => {
+    .flatMap(schema => {
       if (schema.type === 'array') {
         return schema.default
       } else {
         return Option.ofOptional(schema.properties)
-          .map(properties =>
-            Object.keys(properties)
+          .map(properties => {
+            return Object.keys(properties)
               .filter(
                 key =>
                   values[key] !== undefined ||
@@ -87,7 +87,7 @@ function buildBody (
                 acc[key] = values[key] || schema?.properties?.[key]?.default
                 return acc
               }, {})
-          )
+          })
           .getOrElse({})
       }
     })

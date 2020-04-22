@@ -24,6 +24,7 @@ import {
 import { updateRequestBodySchema } from './open-api/utils'
 import OperationReader from './open-api/readers/operation-reader'
 import HttpClient from './http-client'
+import { NotFoundDataException } from './errors'
 
 class SemanticData {
   readonly resourceSchema?: ExpandedOpenAPIV3Semantics.SchemaObject
@@ -81,12 +82,24 @@ class SemanticData {
     return this
   }
 
-  async get (semanticKey: DataSemantics): Promise<any> {
-    const maybeInnerValue = this.getInnerValue(semanticKey)
+  async get (
+    semanticKey: DataSemantics
+  ): Promise<SemanticData | SemanticData[]> {
+    const maybeInnerValue = await this.getInnerValue(semanticKey).toPromise()
 
     if (maybeInnerValue) return maybeInnerValue
 
     return await this.getValueFromLinks(semanticKey)
+  }
+
+  async getValue (semanticKey: DataSemantics): Promise<any> {
+    const semanticData = await this.get(semanticKey)
+
+    if (semanticData instanceof Array) {
+      return semanticData.map(s => s.data)
+    } else {
+      return semanticData.data
+    }
   }
 
   private getInnerValue (
@@ -150,7 +163,7 @@ class SemanticData {
 
   private async getValueFromLinks (
     semanticKey: DataSemantics
-  ): Promise<Option<any>> {
+  ): Promise<SemanticData> {
     const resourcesContainingValue = this.getOperationsWithParentAffiliation()
       .filter(
         result =>
@@ -189,24 +202,22 @@ class SemanticData {
         this.httpClient
       ).invoke()
 
-      return Option.of(
-        new SemanticData(
-          linkedResourceData.data.data[toInvoke.pathInResponse],
-          this.apiDocumentation,
-          this.httpClient,
-          linkedResourceData.data.originHttpResponse,
-          linkedResourceData.data?.resourceSchema?.properties?.[
-            toInvoke.pathInResponse
-          ]
-        )
+      return new SemanticData(
+        linkedResourceData.data.data[toInvoke.pathInResponse],
+        this.apiDocumentation,
+        this.httpClient,
+        linkedResourceData.data.originHttpResponse,
+        linkedResourceData.data?.resourceSchema?.properties?.[
+          toInvoke.pathInResponse
+        ]
       )
     } else if (resourcesContainingValue.length === 0) {
-      return Option.empty()
+      throw new NotFoundDataException()
     } else {
       console.warn(
         'Found more than one link containing a value for the searched property in SemanticData.getValueFromLinks'
       )
-      return Option.empty()
+      throw new NotFoundDataException()
     }
   }
 
@@ -228,24 +239,13 @@ class SemanticData {
           ][]
         }
       })
-      .reduce((acc, v) => acc.concat(v))
+      .reduce((acc, v) => acc.concat(v), [])
       .find(
         ([_, value]: [string, ExpandedOpenAPIV3Semantics.SchemaObject]) =>
           value['@id'] !== undefined && value['@id'] === semanticKey
       )
 
     return Option.ofOptional(result)
-  }
-
-  // TODO: make use of this.get() instead of this.getInnerValue()
-  public getValue (semanticKey: DataSemantics): any {
-    return this.getInnerValue(semanticKey)
-      .map(semanticData =>
-        semanticData instanceof Array
-          ? semanticData.map(s => s.data)
-          : semanticData.data
-      )
-      .getOrUndefined()
   }
 
   public getOtherData (): object {
@@ -296,14 +296,14 @@ class SemanticData {
       )
   }
 
-  public getOtherRelations () {
+  public getOtherRelations (): PivoRelationObject[] {
     const others = ((this.data['_links'] || {}) as HypermediaControl[])
       .map(l => (l instanceof Object ? l.relation : l))
       .filter(key => !this.alreadyReadRelations.includes(key))
 
     return others
       .map(key => this.getRelationFromHypermediaControlKey(key, false))
-      .filter(val => val[0] && val[1])
+      .reduce((acc, val) => acc.concat(val), [])
   }
 
   private getHeader (semanticKey: DataSemantics): NormalizedHeader[] {
@@ -318,7 +318,7 @@ class SemanticData {
           return []
         }
       })
-      .reduce((acc, value) => acc.concat(value))
+      .reduce((acc, value) => acc.concat(value), [])
   }
 
   public getDataFromHeaders (semanticKey: DataSemantics): SemanticData[] {

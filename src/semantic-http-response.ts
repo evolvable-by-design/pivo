@@ -30,7 +30,12 @@ export default class SemanticHttpResponse {
           .filter(
             res => res.data !== '' && res.headers['content-type'] !== undefined
           )
-          .map(res => responseSchema[res.headers['content-type'].split(';')[0]])
+          .map(
+            res =>
+              responseSchema?.content?.[
+                res.headers['content-type'].split(';')[0]
+              ]?.schema
+          )
           .getOrUndefined()
 
         // const data = resultMapper ? resultMapper(result) : result.data

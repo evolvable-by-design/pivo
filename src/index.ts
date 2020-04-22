@@ -4,9 +4,10 @@ import ApiOperation from './api-operation'
 import AuthenticationService from './authentication-service'
 import DataConstraintsChecker from './data-constraints-checker'
 import * as PivoErrors from './errors'
+import * as Domain from './domain'
 import OperationSchema from './operation-schema'
 import Option from './utils/option'
-import { OpenAPIV3Semantics } from './open-api/open-api-types'
+import { ExpandedOpenAPIV3Semantics } from './open-api/open-api-types'
 import SemanticData from './semantic-data'
 import SemanticHttpResponse from './semantic-http-response'
 import SemanticOpenApiDocumentation from './open-api/semantic-open-api-documentation'
@@ -17,9 +18,10 @@ export {
   ApiOperation,
   AuthenticationService,
   DataConstraintsChecker,
+  Domain,
   OperationSchema,
   Option,
-  OpenAPIV3Semantics,
+  ExpandedOpenAPIV3Semantics,
   PivoErrors,
   SemanticData,
   SemanticHttpResponse,

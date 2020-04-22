@@ -31,7 +31,7 @@ export default abstract class Option<A> {
 
   filter (predicate: (a: A) => boolean): Option<A> {
     return this.flatMap(value =>
-      predicate(value) ? Option.ofOptional() : Option.of(value)
+      predicate(value) ? Option.of(value) : Option.ofOptional()
     )
   }
 
@@ -57,6 +57,12 @@ export default abstract class Option<A> {
     } else {
       throw throwable()
     }
+  }
+
+  toPromise (): Promise<A | undefined> {
+    return this.map(value => Promise.resolve<A | undefined>(value)).getOrElse(
+      Promise.resolve(undefined)
+    )
   }
 }
 

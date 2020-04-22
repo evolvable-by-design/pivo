@@ -4,6 +4,7 @@ import ApiOperation from './api-operation'
 import HttpClient from './http-client'
 import { OpenAPIV3 } from 'openapi-types'
 import Option from './utils/option'
+import { ExpandedOpenAPIV3Semantics } from './open-api/open-api-types'
 
 export default class Pivo {
   private httpClient: HttpClient
@@ -36,6 +37,12 @@ export default class Pivo {
     return this.documentation
       .findGetOperationWithPathMatching(url)
       .map(operation => new ApiOperation(operation, this.httpClient))
+  }
+
+  public fromOperation (
+    operation: ExpandedOpenAPIV3Semantics.OperationObject
+  ): ApiOperation {
+    return new ApiOperation(operation, this.httpClient)
   }
 
   /*

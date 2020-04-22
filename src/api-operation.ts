@@ -9,7 +9,7 @@ import HttpClient from './http-client'
 import { AuthenticationRequiredError } from './errors'
 
 export default class ApiOperation {
-  private operationSchema: OperationSchema
+  public readonly operationSchema: OperationSchema
   public readonly userShouldAuthenticate: boolean
 
   constructor (
@@ -32,8 +32,8 @@ export default class ApiOperation {
     }
   }
 
-  public missesRequiredParameters (): boolean {
-    const { params, body } = this.computeParamsAndBody()
+  public missesRequiredParameters (parameters?: object): boolean {
+    const { params, body } = this.computeParamsAndBody(parameters)
     return !allRequiredParamsHaveAValue(this.operation, params, body)
   }
 
@@ -43,12 +43,11 @@ export default class ApiOperation {
 
   public buildRequest (parameters: object): AxiosRequestConfig {
     // TODO: return details about missing params
-    const { params, body } = this.computeParamsAndBody(parameters)
-
-    if (this.missesRequiredParameters()) {
+    if (this.missesRequiredParameters(parameters)) {
       throw new Error('Required parameters are missing')
     }
 
+    const { params, body } = this.computeParamsAndBody(parameters)
     return RequestBuilder.buildRequest(this.operationSchema, params, body)
   }
 
