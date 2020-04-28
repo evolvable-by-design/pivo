@@ -58,6 +58,7 @@ Among the changes that require to update the code, we distinguish the changes to
 2. The parameters of an operation
 3. The response data schema
 4. Access rights and business rules
+5. The deletion of elements
 
 We give a more [detailed taxonomy of API changes](https://cheronantoine.gitbook.io/ph-d/api-client-evolution/evolution-space) on our Gitbook.
 
@@ -78,10 +79,10 @@ const CardCreationComponent = ({ idList }) => {
 }
 
 class CardService {
-  const apiDocumentation = fetchLatestApiDocumentation()
-  function createCard(idList) {
+  apiDocumentation = fetchLatestApiDocumentation()
+  function getCreateCardOperation(idList) {
     const parameters = { '/api/docs/dictionary#listId': idList }
-    return apiDocumentation
+    return this.apiDocumentation
       .findOperationThat('/docs/dictionary#createCard')
       .withDefaultParameters(parameters)
   }
@@ -118,7 +119,7 @@ class CardService {
 
 Again, it uses machine-interpretable semantics to identify data in order to display the proper data to the user. So, a change of the keyword used in the API response does not break the frontend.
 
-Also, ( operations, controles hypermedia, access rights, state, ... )
+Also, the card instance has been enriched with information from the API documentation and hypermedia controls added to the API response. This is a requirement of this approach that we discuss later. Thus, this additional information is leveraged to test the availability of the `delete` operation. Also, to invoke it when the user clicks the delete button. Thanks to this mecanism, all access rights and business rules can be removed from the frontend. Hence, the developer can focus on visual logic code and user experience.
 
 Apart from writing the frontend application slightly differently, as we just show you, two things are required from the API. First, a documentation of the API must be available and it must comply with some requirements that we detail in the [API compliance guide](/doc/not-ready-yet.md). Second, the API must send hypermedia controls in the response body. This is also detailed in the [API compliance guide](/doc/not-ready-yet.md).
 
