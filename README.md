@@ -8,9 +8,9 @@ It has become common practice: we use RESTful APIs to access and manipulate data
 
 As an example, we consider that we have the following API and want to build the following frontend application that is very similar to [Trello](https://trello.com). Here, we will focus on the components that detail and enable the creation of a card.
 
-![example-overview](./doc/example-overview.png)
+![example-overview](./doc/example-overview.jpg)
 
-To create a card into a list, a `POST` request must be sent to `/cards?idList={idList}`. It would return the created card in the response body. Then, to name and describe the card, another request must be sent to update it after its creation. And to delete it, a `DELETE` request must be sent to `/cards/{cardId}`.
+To create a card into a list, a `POST` request must be sent to `/cards?idList={idList}`. It would return the created card in the response body. Then, to name and describe the card, another request must be sent to update it after its creation. And to delete it, a `DELETE` request must be sent to `/cards/{cardId}` with a JSON object in the body, containing a `reason` field that the user must input.
 
 To implement the card creation component and mecanism with [React](https://reactjs.org/), we would write the following code to be compatible with the first version of the API:
 
@@ -38,12 +38,19 @@ const CardDetailsComponent = ({ card }) =>
     <h2>Description</h2>
     <p>{card.description}</p>
     <h2>ACTIONS</h2>
-    <button onClick={() => CardService.delete(card)}>Delete</button>
+
+    <pop-up-with-button buttonLabel="Delete"
+      onConfirm={(reason) => CardService.delete(card.id, reason)}>
+      <input type="text" label="reason" />
+    </pop-up-with-button>
   </right-pane>
 
 class CardService {
-  function deleteCard(cardId) {
-    Http.delete('/cards/' + cardId)
+  function delete(cardId, reason) {
+    Http.delete({
+      url: '/cards/' + cardId,
+      body: { reason }
+    })
   }
 }
 ```
@@ -100,19 +107,32 @@ These differencies enable the implementation of frontend applications that do no
 Accordingly, to display the detail of a `Card`, we propose to write the following code:
 
 ```jsx
-const CardDetailsComponent = ({ card }) =>
-  <right-pane>
-    <h1>{card.get('/api/docs/dictionary#name')}</h1>
-    // Description and actions heading
-    <if test={card.isOperationAvailable('/api/docs/dictionary#deleteAction')}>
-      <button onClick={() => CardService.delete(card)}>Delete</button>
-    </if>
-  </right-pane>
+const evolvable = new EvolvableByDesignLib(fetchLatestApiDocumentation())
+const DELETE_SEMANTICS = '/dictionary#deleteAction' // OWL
+function showCardDetailsComponent ({ card }) {
+  return (
+    <right-pane>
+      <h1>{evolvable.get('/dictionary#name').of(card)}</h1>
+      // Description and actions heading
+      <if test={evolvable.isOperationAvailable(DELETE_SEMANTICS).on(card)}>
+        <pop-up-with-button
+          buttonLabel='Delete'
+          formSchema={evolvable.getOperationSchema(DELETE_SEMANTICS).of(card)}
+          onConfirm={formValues =>
+            CardService.delete(card, formValues, approach)
+          }
+        />
+      </if>
+    </right-pane>
+  )
+}
 
 class CardService {
-  apiDocumentation = fetchLatestApiDocumentation()
-  function delete(card) {
-    card.invokeOperation('/api/docs/dictionary#deleteAction', apiDocumentation)
+  static delete (card, userInputs, evolvable) {
+    evolvable
+      .invokeOperation(DELETE_SEMANTICS)
+      .on(card)
+      .with(userInputs)
   }
 }
 ```
