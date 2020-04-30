@@ -4,7 +4,7 @@
 
 ## Why Pivo? The problem statement.
 
-Is has become common practice: we use RESTful APIs to access and manipulate data on frontend applications. And to build these frontends, we separate the view logic from the API interaction logic. While the view logic is materialized through components and routing, the API interaction logic is dispatched into entity-specific services.
+It has become common practice: we use RESTful APIs to access and manipulate data on frontend applications. And to build these frontends, we separate the view logic from the API interaction logic. While the view logic is materialized through components and routing, the API interaction logic is dispatched into entity-specific services.
 
 As an example, we consider that we have the following API and want to build the following frontend application that is very similar to [Trello](https://trello.com). Here, we will focus on the components that detail and enable the creation of a card.
 
@@ -110,8 +110,8 @@ const CardDetailsComponent = ({ card }) =>
   </right-pane>
 
 class CardService {
-  const apiDocumentation = fetchLatestApiDocumentation()
-  function deleteCard(card) {
+  apiDocumentation = fetchLatestApiDocumentation()
+  function delete(card) {
     card.invokeOperation('/api/docs/dictionary#deleteAction', apiDocumentation)
   }
 }
