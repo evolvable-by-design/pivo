@@ -21,14 +21,14 @@ import {
   HypermediaControl,
   PivoRelationObject
 } from './domain'
-import { updateRequestBodySchema } from './open-api/utils'
+import { updateRequestBodySchema, doesSchemaSemanticsMatch } from './open-api/utils'
 import OperationReader from './open-api/readers/operation-reader'
 import HttpClient from './http-client'
 import { NotFoundDataException } from './errors'
 
 class SemanticData {
   readonly resourceSchema?: ExpandedOpenAPIV3Semantics.SchemaObject
-  readonly type?: string
+  readonly type?: DataSemantics | DataSemantics[]
 
   private alreadyReadData: string[]
   private alreadyReadRelations: string[]
@@ -59,6 +59,14 @@ class SemanticData {
         : undefined
       this.resourceSchema = resourceSchema
     }
+  }
+
+  public is (semanticKey: DataSemantics): boolean {
+    return this.resourceSchema !== undefined && doesSchemaSemanticsMatch(semanticKey, this.resourceSchema)
+  }
+
+  public isOneOf (semanticKey: DataSemantics[]): boolean {
+    return this.resourceSchema !== undefined && doesSchemaSemanticsMatch(semanticKey, this.resourceSchema)
   }
 
   public isObject (): boolean {
@@ -92,18 +100,38 @@ class SemanticData {
     return await this.getValueFromLinks(semanticKey)
   }
 
-  async getValue (semanticKey: DataSemantics): Promise<any> {
-    const semanticData = await this.get(semanticKey)
+  async getOne (
+    semanticKey: DataSemantics
+  ): Promise<SemanticData> {
+    const maybeInnerValue = await this.getInnerValue(semanticKey).toPromise()
 
-    if (semanticData instanceof Array) {
-      return semanticData.map(s => s.data)
-    } else {
-      return semanticData.data
-    }
+    if (maybeInnerValue) return takeFirst(maybeInnerValue)
+
+    return await this.getValueFromLinks(semanticKey)
+  }
+
+  async getArray (
+    semanticKey: DataSemantics
+  ): Promise<SemanticData[]> {
+    const maybeInnerValue = await this.getInnerValue(semanticKey).toPromise()
+
+    if (maybeInnerValue) return ensureArray(maybeInnerValue)
+
+    return ensureArray(await this.getValueFromLinks(semanticKey))
+  }
+
+  async getOneValue (semanticKey: DataSemantics): Promise<any> {
+    const semanticData = await this.getOne(semanticKey)
+    return semanticData.data
+  }
+
+  async getArrayValue (semanticKey: DataSemantics): Promise<any> {
+    const semanticData = await this.getArray(semanticKey)
+    return semanticData.map(s => s.data)
   }
 
   private getInnerValue (
-    semanticKey: DataSemantics
+    semanticKey: DataSemantics | DataSemantics[]
   ): Option<SemanticData | Array<SemanticData>> {
     if (this.data === undefined) return Option.empty()
 
@@ -178,7 +206,7 @@ class SemanticData {
           .map(schema => schema.properties)
           .map(properties =>
             Object.entries(properties).find(
-              ([_, schema]) => schema['@id'] === semanticKey
+              ([_, schema]) => doesSchemaSemanticsMatch(semanticKey, schema)
             )
           )
           .map(([key]) => key)
@@ -222,7 +250,7 @@ class SemanticData {
   }
 
   private findPathsToValueAndSchema (
-    semanticKey: DataSemantics
+    semanticKey: DataSemantics | DataSemantics[]
   ): Option<[string, ExpandedOpenAPIV3Semantics.SchemaObject]> {
     const result:
       | [string, ExpandedOpenAPIV3Semantics.SchemaObject]
@@ -242,7 +270,7 @@ class SemanticData {
       .reduce((acc, v) => acc.concat(v), [])
       .find(
         ([_, value]: [string, ExpandedOpenAPIV3Semantics.SchemaObject]) =>
-          value['@id'] !== undefined && value['@id'] === semanticKey
+          doesSchemaSemanticsMatch(semanticKey, value)
       )
 
     return Option.ofOptional(result)
@@ -507,6 +535,14 @@ class SemanticData {
         return { key, operation: operationWithDefaultValues }
       })
   }
+}
+
+function takeFirst(data: SemanticData | SemanticData[]): SemanticData {
+  return data instanceof Array ? data[0] : data
+}
+
+function ensureArray(data: SemanticData | SemanticData[]): SemanticData[] {
+  return data instanceof Array ? data : [data]
 }
 
 export default SemanticData

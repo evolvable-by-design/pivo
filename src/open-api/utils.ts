@@ -1,6 +1,7 @@
 import { ExpandedOpenAPIV3Semantics } from './open-api-types'
 import OpenApiReaders from './readers'
 import Option from '../utils/option'
+import { DataSemantics } from '../domain'
 
 export function updateRequestBodySchema<
   A extends ExpandedOpenAPIV3Semantics.OperationObject
@@ -61,4 +62,25 @@ export function allRequiredParamsHaveAValue (
     !foundRequiredParamWithoutDefaultValue &&
     !foundRequiredBodyParamsWithoutDefaultValue
   )
+}
+
+export function doesSemanticsMatchOne(target: DataSemantics | DataSemantics[], toCompare: DataSemantics | DataSemantics[]): boolean {
+  if (target instanceof Array) {
+    return toCompare instanceof Array && target.find(semantics => toCompare.includes(semantics)) !== undefined
+  } else {
+    return toCompare instanceof Array ? toCompare.includes(target) : toCompare === target
+  }
+}
+
+export function doesSemanticsMatchAll(target: DataSemantics | DataSemantics[], toCompare: DataSemantics | DataSemantics[]) {
+  if (target instanceof Array) {
+    return toCompare instanceof Array && target.find(semantics => !toCompare.includes(semantics)) !== undefined
+  } else {
+    return toCompare instanceof Array ? toCompare.includes(target) : toCompare === target
+  }
+}
+
+export function doesSchemaSemanticsMatch(target: DataSemantics | DataSemantics[], schema: ExpandedOpenAPIV3Semantics.SchemaObject) {
+  return doesSemanticsMatchOne(target, schema['@id']) ||
+    schema?.oneOf?.find(s => doesSemanticsMatchOne(target, s['@id'])) !== undefined
 }

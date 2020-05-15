@@ -14,6 +14,7 @@ import {
 import DocumentExpander from './readers/document-expander'
 import OperationReader from './readers/operation-reader'
 import Option from '../utils/option'
+import { doesSemanticsMatchOne, doesSchemaSemanticsMatch } from './utils'
 
 export default class SemanticOpenApiDoc {
   private documentation: ExpandedOpenAPIV3Semantics.Document
@@ -45,10 +46,15 @@ export default class SemanticOpenApiDoc {
   public findOperation (
     identifier?: string
   ): Option<ExpandedOpenAPIV3Semantics.OperationObject> {
-    return this._findOperation(
-      operation =>
-        operation['@id'] === identifier || operation.operationId === identifier
-    )
+    if (identifier !== undefined) {
+      return this._findOperation(
+        operation =>
+          doesSemanticsMatchOne(identifier, operation['@id']) ||
+          operation.operationId === identifier
+      )
+    } else {
+      return Option.empty()
+    }
   }
 
   public findOperationThatReturns (
@@ -56,11 +62,7 @@ export default class SemanticOpenApiDoc {
   ): Option<ExpandedOpenAPIV3Semantics.OperationObject> {
     return this._findOperation(operation => {
       return OperationReader.responseBodySchema(operation)
-        .map(
-          schema =>
-            schema['@id'] === target ||
-            schema?.oneOf?.find(s => s['@id'] === target) !== undefined
-        )
+        .map(schema => doesSchemaSemanticsMatch(target, schema))
         .getOrElse(false)
     })
   }
@@ -73,8 +75,7 @@ export default class SemanticOpenApiDoc {
         .map(
           schema =>
             schema.type === 'array' &&
-            (schema.items['@id'] === target ||
-              schema.items.oneOf?.find(s => s['@id'] === target) !== undefined)
+            doesSchemaSemanticsMatch(target, schema.items)
         )
         .getOrElse(false)
     })
