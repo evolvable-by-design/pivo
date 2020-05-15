@@ -3,6 +3,7 @@
   "compilerOptions": {
     "declarationDir": "./build",
     "outDir": "./build",
+    "jsx": "react"
   },
   "include": [
     "src"

@@ -6,6 +6,7 @@
   "author": "Antoine Cheron",
   "license": "ISC",
   "main": "./build/index.js",
+  "types": "./build/index.d.ts",
   "scripts": {
     "build": "rollup -c",
     "test": "jest --coverage",

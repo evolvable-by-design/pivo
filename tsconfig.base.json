@@ -1,7 +1,5 @@
 {
   "compilerOptions": {
-    "declarationDir": "./build",
-    "outDir": "build",
     "module": "es6",
     "target": "es5",
     "lib": [
@@ -23,12 +21,5 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "esModuleInterop": true
-  },
-  "include": [
-    "src"
-  ],
-  "exclude": [
-    "node_modules",
-    "build"
-  ]
+  }
 }
