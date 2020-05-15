@@ -1,6 +1,6 @@
 {
   "name": "@evolvable-by-design/pivo",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "An intent-based programming HTTP client to build evolvable-by-design clients of RESTful APIs",
   "keywords": [],
   "author": "Antoine Cheron",

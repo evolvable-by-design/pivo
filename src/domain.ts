@@ -7,7 +7,7 @@ export declare namespace JsonLD {
   }
 
   interface Entry {
-    '@id': string
+    '@id': string | string[]
     '@type'?: string
   }
 
