@@ -5,12 +5,17 @@ import Pivo from '@evolvable-by-design/pivo'
 import { PivoContextProvider } from '../context/pivo-context'
 
 interface Props {
-  fetch: () => Promise<OpenAPIV3.Document>,
-  loader?: React.ReactNode,
+  fetch: () => Promise<OpenAPIV3.Document>
+  loader?: React.ReactNode
   error?: (errorMessage: string) => React.ReactNode
 }
 
-const DocumentationProvider: FunctionComponent<Props> = ({ fetch, loader, error: errorComponent, children }) => {
+const DocumentationProvider: FunctionComponent<Props> = ({
+  fetch,
+  loader,
+  error: errorComponent,
+  children
+}) => {
   const [isLoading, setLoading] = useState(false)
   const [documentation, setDocumentation] = useState<Pivo>()
   const [error, setError] = useState<Error>()
@@ -28,11 +33,20 @@ const DocumentationProvider: FunctionComponent<Props> = ({ fetch, loader, error:
   if (isLoading) {
     return <>{loader || null}</>
   } else if (documentation !== undefined) {
-    return <PivoContextProvider state={{ pivo: documentation }}>
-      {children}
-    </PivoContextProvider>
+    return (
+      <PivoContextProvider state={{ pivo: documentation }}>
+        {children}
+      </PivoContextProvider>
+    )
   } else {
-    return <>{ errorComponent?.(error?.message || 'Something unexpected happened. Please try again later.') || null }</>
+    return (
+      <>
+        {errorComponent?.(
+          error?.message ||
+            'Something unexpected happened. Please try again later.'
+        ) || null}
+      </>
+    )
   }
 }
 

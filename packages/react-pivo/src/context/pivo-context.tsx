@@ -7,7 +7,10 @@ type Context = {
 
 const PivoStateContext = React.createContext<Context>({})
 
-const PivoContextProvider: FunctionComponent<{ state: Context }> = ({ children, state }) => {
+const PivoContextProvider: FunctionComponent<{ state: Context }> = ({
+  children,
+  state
+}) => {
   return (
     <PivoStateContext.Provider value={state}>
       {children}
@@ -15,20 +18,24 @@ const PivoContextProvider: FunctionComponent<{ state: Context }> = ({ children, 
   )
 }
 
-function usePivoContextState() {
+function usePivoContextState () {
   const context = React.useContext(PivoStateContext)
   if (context === undefined) {
-    throw new Error('usePivoContextState must be used within a PivoContextProvider')
+    throw new Error(
+      'usePivoContextState must be used within a PivoContextProvider'
+    )
   }
   return context
 }
 
-function usePivo(): Pivo {
+function usePivo (): Pivo {
   const { pivo } = usePivoContextState()
   if (pivo !== undefined) {
     return pivo
   } else {
-    throw new Error('Pivo must be used within a PivoContextProvider that was provided a value')
+    throw new Error(
+      'Pivo must be used within a PivoContextProvider that was provided a value'
+    )
   }
 }
 

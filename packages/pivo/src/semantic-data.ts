@@ -21,7 +21,10 @@ import {
   HypermediaControl,
   PivoRelationObject
 } from './domain'
-import { updateRequestBodySchema, doesSchemaSemanticsMatch } from './open-api/utils'
+import {
+  updateRequestBodySchema,
+  doesSchemaSemanticsMatch
+} from './open-api/utils'
 import OperationReader from './open-api/readers/operation-reader'
 import HttpClient from './http-client'
 import { NotFoundDataException } from './errors'
@@ -62,11 +65,17 @@ class SemanticData {
   }
 
   public is (semanticKey: DataSemantics): boolean {
-    return this.resourceSchema !== undefined && doesSchemaSemanticsMatch(semanticKey, this.resourceSchema)
+    return (
+      this.resourceSchema !== undefined &&
+      doesSchemaSemanticsMatch(semanticKey, this.resourceSchema)
+    )
   }
 
   public isOneOf (semanticKey: DataSemantics[]): boolean {
-    return this.resourceSchema !== undefined && doesSchemaSemanticsMatch(semanticKey, this.resourceSchema)
+    return (
+      this.resourceSchema !== undefined &&
+      doesSchemaSemanticsMatch(semanticKey, this.resourceSchema)
+    )
   }
 
   public isObject (): boolean {
@@ -100,9 +109,7 @@ class SemanticData {
     return await this.getValueFromLinks(semanticKey)
   }
 
-  async getOne (
-    semanticKey: DataSemantics
-  ): Promise<SemanticData> {
+  async getOne (semanticKey: DataSemantics): Promise<SemanticData> {
     const maybeInnerValue = await this.getInnerValue(semanticKey).toPromise()
 
     if (maybeInnerValue) return takeFirst(maybeInnerValue)
@@ -110,9 +117,7 @@ class SemanticData {
     return await this.getValueFromLinks(semanticKey)
   }
 
-  async getArray (
-    semanticKey: DataSemantics
-  ): Promise<SemanticData[]> {
+  async getArray (semanticKey: DataSemantics): Promise<SemanticData[]> {
     const maybeInnerValue = await this.getInnerValue(semanticKey).toPromise()
 
     if (maybeInnerValue) return ensureArray(maybeInnerValue)
@@ -205,8 +210,8 @@ class SemanticData {
         const key = OperationReader.responseBodySchema(result.operation)
           .map(schema => schema.properties)
           .map(properties =>
-            Object.entries(properties).find(
-              ([_, schema]) => doesSchemaSemanticsMatch(semanticKey, schema)
+            Object.entries(properties).find(([_, schema]) =>
+              doesSchemaSemanticsMatch(semanticKey, schema)
             )
           )
           .map(([key]) => key)
@@ -268,9 +273,8 @@ class SemanticData {
         }
       })
       .reduce((acc, v) => acc.concat(v), [])
-      .find(
-        ([_, value]: [string, ExpandedOpenAPIV3Semantics.SchemaObject]) =>
-          doesSchemaSemanticsMatch(semanticKey, value)
+      .find(([_, value]: [string, ExpandedOpenAPIV3Semantics.SchemaObject]) =>
+        doesSchemaSemanticsMatch(semanticKey, value)
       )
 
     return Option.ofOptional(result)
@@ -537,11 +541,11 @@ class SemanticData {
   }
 }
 
-function takeFirst(data: SemanticData | SemanticData[]): SemanticData {
+function takeFirst (data: SemanticData | SemanticData[]): SemanticData {
   return data instanceof Array ? data[0] : data
 }
 
-function ensureArray(data: SemanticData | SemanticData[]): SemanticData[] {
+function ensureArray (data: SemanticData | SemanticData[]): SemanticData[] {
   return data instanceof Array ? data : [data]
 }
 

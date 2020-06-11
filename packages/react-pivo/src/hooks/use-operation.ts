@@ -1,5 +1,10 @@
 import React, { useCallback, useMemo, useState } from 'react'
-import { ApiOperation, ExpandedOpenAPIV3Semantics, SemanticHttpResponse, SemanticData } from '@evolvable-by-design/pivo'
+import {
+  ApiOperation,
+  ExpandedOpenAPIV3Semantics,
+  SemanticHttpResponse,
+  SemanticData
+} from '@evolvable-by-design/pivo'
 import { AxiosError } from 'axios'
 
 import { Map } from '../utils'
@@ -8,21 +13,26 @@ import { doesSemanticsMatchOne } from '@evolvable-by-design/pivo/build/open-api/
 
 type UseOperationResult = {
   parametersDetail: {
-    values: object,
-    setter: React.Dispatch<any>,
+    values: object
+    setter: React.Dispatch<any>
     documentation: ExpandedOpenAPIV3Semantics.ParameterObject[]
-  },
-  makeCall: () => void,
-  isLoading: boolean,
-  success: boolean,
-  data?: SemanticData,
-  error?: AxiosError,
+  }
+  makeCall: () => void
+  isLoading: boolean
+  success: boolean
+  data?: SemanticData
+  error?: AxiosError
   userShouldAuthenticate: boolean
 }
 
-export default function useOperation(operation: ApiOperation, providedValues: object = {}): UseOperationResult {
+export default function useOperation (
+  operation: ApiOperation,
+  providedValues: object = {}
+): UseOperationResult {
   const parameters: ExpandedOpenAPIV3Semantics.ParameterObject[] = operation.operationSchema.getParameters()
-  const parametersName: [string, JsonLD.Entry['@id']][] = parameters.map((p: ExpandedOpenAPIV3Semantics.ParameterObject) => [p.name, p['@id']])
+  const parametersName: [string, JsonLD.Entry['@id']][] = parameters.map(
+    (p: ExpandedOpenAPIV3Semantics.ParameterObject) => [p.name, p['@id']]
+  )
   const defaultParametersValues = {
     ...operation.operationSchema.getDefaultParametersValue(),
     ...mapProvidedValueToOperationParameter(providedValues, parametersName)
@@ -52,9 +62,15 @@ export default function useOperation(operation: ApiOperation, providedValues: ob
   }
 }
 
-type UseCallerResult = { makeCall: () => void, isLoading: boolean, success: boolean, data?: SemanticData, error?: AxiosError }
+type UseCallerResult = {
+  makeCall: () => void
+  isLoading: boolean
+  success: boolean
+  data?: SemanticData
+  error?: AxiosError
+}
 
-export function useCaller(
+export function useCaller (
   parameters: object,
   callFct: (parameters?: object) => Promise<SemanticHttpResponse>
 ): UseCallerResult {
@@ -90,7 +106,10 @@ export function useCaller(
   return { makeCall, isLoading, success, data, error }
 }
 
-function mapProvidedValueToOperationParameter(values: Map<any>, keys: [string, JsonLD.Entry['@id']][]): object {
+function mapProvidedValueToOperationParameter (
+  values: Map<any>,
+  keys: [string, JsonLD.Entry['@id']][]
+): object {
   const valuesK = Object.keys(values || {})
   const res: Map<any> = {}
   keys.forEach(([key, semanticKey]: [string, string]) => {

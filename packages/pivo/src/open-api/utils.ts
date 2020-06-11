@@ -64,23 +64,45 @@ export function allRequiredParamsHaveAValue (
   )
 }
 
-export function doesSemanticsMatchOne(target: DataSemantics | DataSemantics[], toCompare: DataSemantics | DataSemantics[]): boolean {
+export function doesSemanticsMatchOne (
+  target: DataSemantics | DataSemantics[],
+  toCompare: DataSemantics | DataSemantics[]
+): boolean {
   if (target instanceof Array) {
-    return toCompare instanceof Array && target.find(semantics => toCompare.includes(semantics)) !== undefined
+    return (
+      toCompare instanceof Array &&
+      target.find(semantics => toCompare.includes(semantics)) !== undefined
+    )
   } else {
-    return toCompare instanceof Array ? toCompare.includes(target) : toCompare === target
+    return toCompare instanceof Array
+      ? toCompare.includes(target)
+      : toCompare === target
   }
 }
 
-export function doesSemanticsMatchAll(target: DataSemantics | DataSemantics[], toCompare: DataSemantics | DataSemantics[]) {
+export function doesSemanticsMatchAll (
+  target: DataSemantics | DataSemantics[],
+  toCompare: DataSemantics | DataSemantics[]
+) {
   if (target instanceof Array) {
-    return toCompare instanceof Array && target.find(semantics => !toCompare.includes(semantics)) !== undefined
+    return (
+      toCompare instanceof Array &&
+      target.find(semantics => !toCompare.includes(semantics)) !== undefined
+    )
   } else {
-    return toCompare instanceof Array ? toCompare.includes(target) : toCompare === target
+    return toCompare instanceof Array
+      ? toCompare.includes(target)
+      : toCompare === target
   }
 }
 
-export function doesSchemaSemanticsMatch(target: DataSemantics | DataSemantics[], schema: ExpandedOpenAPIV3Semantics.SchemaObject) {
-  return doesSemanticsMatchOne(target, schema['@id']) ||
-    schema?.oneOf?.find(s => doesSemanticsMatchOne(target, s['@id'])) !== undefined
+export function doesSchemaSemanticsMatch (
+  target: DataSemantics | DataSemantics[],
+  schema: ExpandedOpenAPIV3Semantics.SchemaObject
+) {
+  return (
+    doesSemanticsMatchOne(target, schema['@id']) ||
+    schema?.oneOf?.find(s => doesSemanticsMatchOne(target, s['@id'])) !==
+      undefined
+  )
 }

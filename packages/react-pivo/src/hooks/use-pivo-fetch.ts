@@ -1,16 +1,31 @@
 import { useEffect, useState } from 'react'
 import { ApiOperation, SemanticData } from '@evolvable-by-design/pivo'
 
-export function usePivoFetch<A>(operation: ApiOperation | undefined, extract: (a: SemanticData) => Promise<SemanticData>, type: (a: SemanticData) => Promise<A>) {
+export function usePivoFetch<A> (
+  operation: ApiOperation | undefined,
+  extract: (a: SemanticData) => Promise<SemanticData>,
+  type: (a: SemanticData) => Promise<A>
+) {
   return usePivoFetchGeneric(operation, extract, type)
 }
 
-export function usePivoFetchArray<A>(operation: ApiOperation | undefined, extract: (a: SemanticData) => Promise<ReadonlyArray<SemanticData>> = (a) => Promise.resolve([a]), type: (a: ReadonlyArray<SemanticData>) => Promise<A>) {
+export function usePivoFetchArray<A> (
+  operation: ApiOperation | undefined,
+  extract: (a: SemanticData) => Promise<ReadonlyArray<SemanticData>> = a =>
+    Promise.resolve([a]),
+  type: (a: ReadonlyArray<SemanticData>) => Promise<A>
+) {
   return usePivoFetchGeneric(operation, extract, type)
 }
 
-function usePivoFetchGeneric<A, SEMANTIC_DATA>(operation: ApiOperation | undefined, extract: (a: SemanticData) => Promise<SEMANTIC_DATA>, type: (a: SEMANTIC_DATA) => Promise<A>) {
-  const [state, setState] = useState<SemanticLoadedGeneric<A | undefined, SEMANTIC_DATA>>({
+function usePivoFetchGeneric<A, SEMANTIC_DATA> (
+  operation: ApiOperation | undefined,
+  extract: (a: SemanticData) => Promise<SEMANTIC_DATA>,
+  type: (a: SEMANTIC_DATA) => Promise<A>
+) {
+  const [state, setState] = useState<
+    SemanticLoadedGeneric<A | undefined, SEMANTIC_DATA>
+  >({
     loading: true,
     semanticData: undefined,
     data: undefined
@@ -18,15 +33,18 @@ function usePivoFetchGeneric<A, SEMANTIC_DATA>(operation: ApiOperation | undefin
 
   useEffect(() => {
     if (operation) {
-      operation.invoke()
+      operation
+        .invoke()
         .then(response => extract(response.data))
-        .then(semanticData => type(semanticData).then(data => ({ semanticData, data })))
+        .then(semanticData =>
+          type(semanticData).then(data => ({ semanticData, data }))
+        )
         .then(newStatePartial => {
-        setState({
-          ...newStatePartial,
-          loading: false
+          setState({
+            ...newStatePartial,
+            loading: false
+          })
         })
-      })
     } else {
       setState({
         loading: false,
@@ -40,7 +58,7 @@ function usePivoFetchGeneric<A, SEMANTIC_DATA>(operation: ApiOperation | undefin
 }
 
 export interface Loaded<A> {
-  readonly loading: boolean,
+  readonly loading: boolean
   readonly data: A
 }
 
