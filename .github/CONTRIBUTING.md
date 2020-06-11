@@ -52,25 +52,25 @@ The core team is monitoring for pull requests. We will review your pull request 
 
 **Before submitting a pull request,** please make sure the following is done:
 
-1. Clone [the repository](https://github.com/evolvable-by-design/pivo) and create your branch from `master`. 
+1. Clone [the repository](https://github.com/evolvable-by-design/pivo) and create your branch from `master`.
 2. Run `yarn` in the repository root, then in the package(s) that you will work on and create your branch from `master`.
 3. If you've fixed a bug or added code that should be tested, add tests.
 4. Ensure the test suite passes (`yarn test`). Tip: `yarn test --watch TestName` is helpful in development.
 5. Format your code with [prettier-standard](https://github.com/sheerun/prettier-standard) (`yarn format`).
-8. Make sure your code lints (`yarn lint`).
+6. Make sure your code lints (`yarn lint`).
 
 ### Contribution Prerequisites
 
-* You have [Node](https://nodejs.org) installed at v8.0.0+ and [Yarn](https://yarnpkg.com/en/) at v1.2.0+.
-* You are familiar with Git.
+- You have [Node](https://nodejs.org) installed at v8.0.0+ and [Yarn](https://yarnpkg.com/en/) at v1.2.0+.
+- You are familiar with Git.
 
 ### Development Workflow
 
 After cloning React, run `yarn` to fetch its dependencies.
 Then, you can run several commands:
 
-* `yarn lint` checks the code style.
-* `yarn test` runs the complete test suite.
+- `yarn lint` checks the code style.
+- `yarn test` runs the complete test suite.
 
 We recommend running `yarn test` (or its variations above) to make sure you don't introduce any regressions as you work on your change. However it can be handy to try your changes in a real project. In addition, we can ensure that we don't break your code in the future.
 

@@ -10,7 +10,7 @@
   4. Ensure the test suite passes (`yarn test`). Tip: `yarn test --watch TestName` is helpful in development.
   5. Format your code (`yarn format`).
   6. Make sure your code lints (`yarn lint`).
-  
+
   If your work is still in progress:
   You can submit a Pull Request for reviews even if your work is still in
   progress. Prepend `[WIP]` to the title of the Pull Request. You can specify
@@ -26,10 +26,10 @@
 
 ## Quality Assurance
 
-<!-- 
+<!--
   Please give one or several quality assurance scenarios.
   In case of a bug, you can also specify non-regression tests.
-  Demonstrate the code is solid and explain how we can test it. 
+  Demonstrate the code is solid and explain how we can test it.
   Example: The exact commands you ran and their output.
 -->
 

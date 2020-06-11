@@ -4,10 +4,7 @@ about: Report a reproducible bug or regression.
 title: 'Bug: '
 labels: ''
 assignees: ''
-
----
-
-<!--
+---<!--
   Please provide a clear and concise description of what the bug is. Include
   screenshots if needed. Please test using the latest version of the relevant
   Pivo packages to make sure your issue has not already been fixed.
@@ -17,8 +14,7 @@ Pivo version:
 
 ## Steps To Reproduce
 
-1.
-2.
+1. 2.
 
 Link to code example:
 
@@ -31,6 +27,5 @@ Link to code example:
 -->
 
 ## The current behavior
-
 
 ## The expected behavior

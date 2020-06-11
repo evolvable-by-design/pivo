@@ -5,9 +5,11 @@
     "url": "https://github.com/evolvable-by-design/pivo.git"
   },
   "scripts": {
-    "format": "prettier-standard"
+    "format": "prettier-standard --format"
   },
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "devDependencies": {
     "@rollup/plugin-commonjs": "11.0.2",
     "@rollup/plugin-json": "^4.0.2",
@@ -34,6 +36,10 @@
     "rootDir": "test"
   },
   "standard": {
-    "ignore": ["node_modules/", "build/", "coverage/"]
+    "ignore": [
+      "node_modules/",
+      "build/",
+      "coverage/"
+    ]
   }
 }
