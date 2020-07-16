@@ -10,11 +10,11 @@ export function buildRequest (
   parameters: object,
   body: object
 ): AxiosRequestConfig {
-  if (supportsJson(operation)) {
+  if (operation.getRequestBodySchema().isEmpty() || supportsJson(operation)) {
     return {
       method: operation.schema.verb as Method,
       url: buildUrl(operation, parameters),
-      data: buildBody(operation.getRequestBodySchema(), body),
+      data: buildBody(operation.getRequestBodySchema(), body).getOrUndefined(),
       headers: buildHeaders(operation, parameters)
     }
   } else {
@@ -68,10 +68,10 @@ function buildUrl (operation: OperationSchema, parameters: object) {
 function buildBody (
   requestBodySchema: Option<ExpandedOpenAPIV3Semantics.SchemaObject>,
   values: object
-): object {
+): Option<unknown> {
   return requestBodySchema
     .filter(schema => ['object', 'array'].includes(schema.type))
-    .flatMap(schema => {
+    .map(schema => {
       if (schema.type === 'array') {
         return schema.default
       } else {
@@ -84,7 +84,10 @@ function buildBody (
                   schema?.properties?.[key]?.default !== undefined
               )
               .reduce((acc, key) => {
-                acc[key] = values[key] || schema?.properties?.[key]?.default
+                acc[key] =
+                  values[key] !== undefined
+                    ? values[key]
+                    : schema?.properties?.[key]?.default
                 return acc
               }, {})
           })

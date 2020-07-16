@@ -8,7 +8,8 @@ import * as Domain from './domain'
 import OperationSchema from './operation-schema'
 import Option from './utils/option'
 import { ExpandedOpenAPIV3Semantics } from './open-api/open-api-types'
-import SemanticData from './semantic-data'
+import * as OpenApiUtils from './open-api/utils'
+import SemanticResource from './semantic-resource'
 import SemanticHttpResponse from './semantic-http-response'
 import SemanticOpenApiDocumentation from './open-api/semantic-open-api-documentation'
 
@@ -21,9 +22,10 @@ export {
   Domain,
   OperationSchema,
   Option,
+  OpenApiUtils,
   ExpandedOpenAPIV3Semantics,
   PivoErrors,
-  SemanticData,
+  SemanticResource,
   SemanticHttpResponse,
   SemanticOpenApiDocumentation
 }

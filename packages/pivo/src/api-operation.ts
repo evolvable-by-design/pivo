@@ -1,6 +1,10 @@
 import { AxiosRequestConfig } from 'axios'
 
-import { allRequiredParamsHaveAValue } from './open-api/utils'
+import {
+  allRequiredParamsHaveAValue,
+  getBodyParametersWithoutValue,
+  getQueryParametersWithoutValue
+} from './open-api/utils'
 import OperationSchema from './operation-schema'
 import * as RequestBuilder from './request-builder'
 import SemanticHttpResponse from './semantic-http-response'
@@ -35,6 +39,36 @@ export default class ApiOperation {
   public missesRequiredParameters (parameters?: object): boolean {
     const { params, body } = this.computeParamsAndBody(parameters)
     return !allRequiredParamsHaveAValue(this.operation, params, body)
+  }
+
+  public getMissingParameters (
+    parameters?: object,
+    required: boolean = true
+  ): ExpandedOpenAPIV3Semantics.ParameterObject[] {
+    if (parameters === undefined) {
+      return this.operationSchema
+        .getParameters()
+        .filter(
+          parameter =>
+            parameter.required === required &&
+            parameter.schema?.default === undefined
+        )
+    } else {
+      const { params, body } = this.computeParamsAndBody(parameters)
+      const missingQueryParams = getQueryParametersWithoutValue(
+        this.operation,
+        params,
+        required
+      )
+
+      const missingBodyParams = getBodyParametersWithoutValue(
+        this.operation,
+        body,
+        required
+      )
+
+      return missingQueryParams.concat(missingBodyParams)
+    }
   }
 
   public buildDefaultRequest () {

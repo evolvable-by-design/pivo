@@ -1,5 +1,5 @@
 import OperationSchema from './operation-schema'
-import SemanticData from './semantic-data'
+import SemanticResource from './semantic-resource'
 import Option from './utils/option'
 
 import { AxiosError, AxiosResponse } from 'axios'
@@ -9,11 +9,15 @@ import HttpClient from './http-client'
 export default class SemanticHttpResponse {
   readonly rawData: any
   constructor (
-    readonly data: SemanticData,
+    readonly data: SemanticResource,
     readonly operationSchema: OperationSchema,
     readonly request: object
   ) {
-    this.rawData = data.data
+    this.rawData = data instanceof Array ? data.map(d => d.data) : data.data
+  }
+
+  public isArray (): boolean {
+    return this.data instanceof Array
   }
 
   static fromSuccess (
@@ -41,7 +45,7 @@ export default class SemanticHttpResponse {
         // const data = resultMapper ? resultMapper(result) : result.data
         const data = response.data
 
-        const semanticData = new SemanticData(
+        const semanticData = new SemanticResource(
           data,
           apiDocumentation,
           httpClient,

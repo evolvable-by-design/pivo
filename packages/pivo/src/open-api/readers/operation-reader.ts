@@ -28,7 +28,9 @@ export default class OperationReader {
     statusCode?: number | string
   ): Option<ExpandedOpenAPIV3Semantics.ResponseObject> {
     return Option.ofOptional(operation.responses).map(responses =>
-      statusCode !== undefined ? responses[statusCode.toString()] : responses[0]
+      statusCode !== undefined
+        ? responses[statusCode.toString()]
+        : responses[Object.keys(responses)[0]]
     )
   }
 

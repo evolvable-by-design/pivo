@@ -14,7 +14,11 @@ import {
 import DocumentExpander from './readers/document-expander'
 import OperationReader from './readers/operation-reader'
 import Option from '../utils/option'
-import { doesSemanticsMatchOne, doesSchemaSemanticsMatch } from './utils'
+import {
+  doesSemanticsMatchOne,
+  doesSchemaSemanticsMatch,
+  doesSemanticTypeMatch
+} from './utils'
 
 export default class SemanticOpenApiDoc {
   private documentation: ExpandedOpenAPIV3Semantics.Document
@@ -58,27 +62,35 @@ export default class SemanticOpenApiDoc {
   }
 
   public findOperationThatReturns (
-    target: DataSemantics
+    target?: DataSemantics | DataSemantics[]
   ): Option<ExpandedOpenAPIV3Semantics.OperationObject> {
-    return this._findOperation(operation => {
-      return OperationReader.responseBodySchema(operation)
-        .map(schema => doesSchemaSemanticsMatch(target, schema))
-        .getOrElse(false)
-    })
+    if (target == null) {
+      return Option.empty()
+    } else {
+      return this._findOperation(operation => {
+        return OperationReader.responseBodySchema(operation)
+          .map(schema => doesSemanticTypeMatch(target, schema))
+          .getOrElse(false)
+      })
+    }
   }
 
   public findOperationListing (
-    target: DataSemantics
+    target?: DataSemantics | DataSemantics[]
   ): Option<ExpandedOpenAPIV3Semantics.OperationObject> {
-    return this._findOperation(operation => {
-      return OperationReader.responseBodySchema(operation)
-        .map(
-          schema =>
-            schema.type === 'array' &&
-            doesSchemaSemanticsMatch(target, schema.items)
-        )
-        .getOrElse(false)
-    })
+    if (target == null) {
+      return Option.empty()
+    } else {
+      return this._findOperation(operation => {
+        return OperationReader.responseBodySchema(operation)
+          .map(
+            schema =>
+              schema.type === 'array' &&
+              doesSchemaSemanticsMatch(target, schema.items)
+          )
+          .getOrElse(false)
+      })
+    }
   }
 
   public findGetOperationWithPathMatching (
