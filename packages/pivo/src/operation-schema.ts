@@ -1,4 +1,5 @@
 import { ExpandedOpenAPIV3Semantics } from './open-api/open-api-types'
+import { schemaToParameters } from './open-api/utils'
 import OperationReader from './open-api/readers/operation-reader'
 import Option from './utils/option'
 import { Map, reduceObject } from './utils/transformation'
@@ -12,7 +13,7 @@ export default class OperationSchema {
 
   public getParameters (): ExpandedOpenAPIV3Semantics.ParameterObject[] {
     const parametersFromSchema = this.getRequestBodySchema()
-      .map(s => this.bodySchemaToParameters(s, 'body'))
+      .map(s => schemaToParameters(s, 'body'))
       .getOrElse([])
 
     return [...this.getParametersSchema(), ...parametersFromSchema]
@@ -57,12 +58,15 @@ export default class OperationSchema {
       ...parameters
     }
 
-    return Object.keys(
+    return Object.entries(
       this.getRequestBodySchema()
         .map(s => s.properties)
         .getOrElse({})
     )
-      .map(key => [key, parametersWithDefault[key]])
+      .map(([key, schema]) => [
+        key,
+        this.findValue(parametersWithDefault, key, schema['@id'])
+      ])
       .reduce(reduceObject, {})
   }
 
@@ -98,8 +102,13 @@ export default class OperationSchema {
     }
 
     return this.getParametersSchema()
-      .map(schema => schema.name)
-      .map((name: string) => [name, parametersWithDefault[name]])
+      .map(schema => {
+        return { name: schema.name, semantics: schema['@id'] }
+      })
+      .map(({ name, semantics }) => [
+        name,
+        this.findValue(parametersWithDefault, name, semantics)
+      ])
       .reduce(reduceObject, {})
   }
 
@@ -109,24 +118,20 @@ export default class OperationSchema {
     return OperationReader.responseSchema(this.schema, statusCode)
   }
 
-  private bodySchemaToParameters (
-    schema: ExpandedOpenAPIV3Semantics.SchemaObject,
-    from: 'body' | 'path' | 'query' | 'header'
-  ): ExpandedOpenAPIV3Semantics.ParameterObject[] {
-    return Option.ofOptional(schema.properties)
-      .map(properties => Object.entries(properties))
-      .map(propertiesEntries =>
-        propertiesEntries.map(([key, s]) => {
-          return {
-            name: key,
-            in: from,
-            description: s.description,
-            required: schema.required?.includes(key) || false,
-            schema: s,
-            '@id': s['@id']
-          }
-        })
-      )
-      .getOrElse([])
+  private findValue (
+    parameters: object,
+    parameterName: string,
+    parameterSemantics: string | string[]
+  ): unknown {
+    const maybeValueFromSemantics: unknown | undefined =
+      parameterSemantics instanceof Array
+        ? parameterSemantics
+            .map(s => parameters[s])
+            .find(el => el !== undefined)
+        : parameters[parameterSemantics]
+
+    return maybeValueFromSemantics !== undefined
+      ? maybeValueFromSemantics
+      : parameters[parameterName]
   }
 }

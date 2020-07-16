@@ -10,7 +10,7 @@ import { AxiosResponse } from 'axios'
 import SemanticOpenApiDocumentation from './open-api/semantic-open-api-documentation'
 import { reduceObject, Map } from './utils/transformation'
 import Option from './utils/option'
-import SemanticDataUtils from './utils/semantic-data'
+import SemanticResourceUtils from './utils/semantic-resource'
 import ApiOperation from './api-operation'
 import { ExpandedOpenAPIV3Semantics } from './open-api/open-api-types'
 import {
@@ -23,13 +23,14 @@ import {
 } from './domain'
 import {
   updateRequestBodySchema,
-  doesSchemaSemanticsMatch
+  doesSchemaSemanticsMatch,
+  doesSemanticTypeMatch
 } from './open-api/utils'
 import OperationReader from './open-api/readers/operation-reader'
 import HttpClient from './http-client'
 import { NotFoundDataException } from './errors'
 
-class SemanticData {
+class SemanticResource {
   readonly resourceSchema?: ExpandedOpenAPIV3Semantics.SchemaObject
   readonly type?: DataSemantics | DataSemantics[]
 
@@ -49,8 +50,10 @@ class SemanticData {
 
     if (resourceSchema?.oneOf) {
       const schema = resourceSchema.oneOf
-        .sort(SemanticDataUtils.sortSchemaWithLowerAmountOfRequiredParameters)
-        .find(schema => SemanticDataUtils.doesSchemaMatch(data, schema))
+        .sort(
+          SemanticResourceUtils.sortSchemaWithLowerAmountOfRequiredParameters
+        )
+        .find(schema => SemanticResourceUtils.doesSchemaMatch(data, schema))
 
       this.resourceSchema = schema
       this.type = schema
@@ -83,6 +86,7 @@ class SemanticData {
       ? this.resourceSchema.type === 'object'
       : this.data === Object(this.data)
   }
+
   public isArray (): boolean {
     return this.resourceSchema
       ? this.resourceSchema.type === 'array'
@@ -93,15 +97,31 @@ class SemanticData {
     return !this.isArray() && !this.isObject()
   }
 
-  public resetReadCounter (): SemanticData {
+  public resetReadCounter (): SemanticResource {
     this.alreadyReadData = []
     this.alreadyReadRelations = []
     return this
   }
 
-  async get (
-    semanticKey: DataSemantics
-  ): Promise<SemanticData | SemanticData[]> {
+  public toArray (): SemanticResource[] {
+    if (this.data instanceof Array) {
+      return this.data.map(
+        d =>
+          new SemanticResource(
+            d,
+            this.apiDocumentation,
+            this.httpClient,
+            this.originHttpResponse,
+            this.resourceSchema?.['items'],
+            this.responseSchema
+          )
+      )
+    } else {
+      return [this]
+    }
+  }
+
+  async get (semanticKey: DataSemantics): Promise<SemanticResource> {
     const maybeInnerValue = await this.getInnerValue(semanticKey).toPromise()
 
     if (maybeInnerValue) return maybeInnerValue
@@ -109,7 +129,7 @@ class SemanticData {
     return await this.getValueFromLinks(semanticKey)
   }
 
-  async getOne (semanticKey: DataSemantics): Promise<SemanticData> {
+  async getOne (semanticKey: DataSemantics): Promise<SemanticResource> {
     const maybeInnerValue = await this.getInnerValue(semanticKey).toPromise()
 
     if (maybeInnerValue) return takeFirst(maybeInnerValue)
@@ -117,7 +137,7 @@ class SemanticData {
     return await this.getValueFromLinks(semanticKey)
   }
 
-  async getArray (semanticKey: DataSemantics): Promise<SemanticData[]> {
+  async getArray (semanticKey: DataSemantics): Promise<SemanticResource[]> {
     const maybeInnerValue = await this.getInnerValue(semanticKey).toPromise()
 
     if (maybeInnerValue) return ensureArray(maybeInnerValue)
@@ -137,54 +157,26 @@ class SemanticData {
 
   private getInnerValue (
     semanticKey: DataSemantics | DataSemantics[]
-  ): Option<SemanticData | Array<SemanticData>> {
+  ): Option<SemanticResource> {
     if (this.data === undefined) return Option.empty()
 
     if (this.isObject()) {
       return this.findPathsToValueAndSchema(semanticKey)
         .flatMap(([key, schema]) => {
           const value = key.includes('.')
-            ? this.data[key.split('.')[0]][key.split('.')[1]]
+            ? this.data[key.split('.')[0]][key.split('.')[1]] // TODO: support more nested values
             : this.data[key]
 
-          return value ? Option.of({ key, schema, value }) : Option.empty()
+          return value != null
+            ? Option.of({ key, schema, value })
+            : Option.empty()
         })
         .map(({ key, schema, value }) => {
           if (!this.alreadyReadData.includes(key)) {
             this.alreadyReadData.push(key)
           }
 
-          if (schema.type === 'array') {
-            const responseSchema = this.apiDocumentation
-              .findOperationThatReturns(schema.items['@id'])
-              .flatMap(operation => OperationReader.responseSchema(operation))
-
-            this.apiDocumentation?.responseBodySchema(schema.items['@id'])
-            return value.map(
-              (v: any) =>
-                new SemanticData(
-                  v,
-                  this.apiDocumentation,
-                  this.httpClient,
-                  this.originHttpResponse,
-                  schema.items,
-                  responseSchema.getOrUndefined()
-                )
-            )
-          } else {
-            const responseSchema = this.apiDocumentation
-              .findOperationThatReturns(schema['@id'])
-              .flatMap(operation => OperationReader.responseSchema(operation))
-
-            return new SemanticData(
-              value,
-              this.apiDocumentation,
-              this.httpClient,
-              this.originHttpResponse,
-              schema,
-              responseSchema.getOrUndefined()
-            )
-          }
+          return this.instantiateSemanticResourceFromInnerValue(schema, value)
         })
     } else if (this.isArray()) {
       // Not sure of this yet. This may be thought a bit more.
@@ -194,63 +186,130 @@ class SemanticData {
     }
   }
 
+  private instantiateSemanticResourceFromInnerValue (
+    schema: ExpandedOpenAPIV3Semantics.SchemaObject,
+    value: any
+  ): SemanticResource {
+    if (schema.type === 'array') {
+      const responseSchema = this.apiDocumentation
+        .findOperationThatReturns(schema.items['@id'])
+        .orElse(() =>
+          this.apiDocumentation.findOperationThatReturns(schema.items['@type'])
+        )
+        .flatMap(operation => OperationReader.responseSchema(operation))
+
+      return value.map((v: any) => {
+        const newOriginHttpResponse: AxiosResponse<unknown> = {
+          data: v,
+          status: 200,
+          statusText: 'Ok',
+          headers: {},
+          config: {}
+        }
+
+        return new SemanticResource(
+          v,
+          this.apiDocumentation,
+          this.httpClient,
+          newOriginHttpResponse,
+          schema.items,
+          responseSchema.getOrUndefined()
+        )
+      })
+    } else {
+      const responseSchema = this.apiDocumentation
+        .findOperationThatReturns(schema['@id'])
+        .orElse(() =>
+          this.apiDocumentation.findOperationThatReturns(schema['@type'])
+        )
+        .flatMap(operation => OperationReader.responseSchema(operation))
+
+      const newOriginHttpResponse: AxiosResponse<unknown> = {
+        data: value,
+        status: 200,
+        statusText: 'Ok',
+        headers: {},
+        config: {}
+      }
+
+      return new SemanticResource(
+        value,
+        this.apiDocumentation,
+        this.httpClient,
+        newOriginHttpResponse,
+        schema,
+        responseSchema.getOrUndefined()
+      )
+    }
+  }
+
   private async getValueFromLinks (
     semanticKey: DataSemantics
-  ): Promise<SemanticData> {
+  ): Promise<SemanticResource> {
     const resourcesContainingValue = this.getOperationsWithParentAffiliation()
       .filter(
         result =>
-          result.operation.verb === 'get' &&
-          !new ApiOperation(
-            result.operation,
-            this.httpClient
-          ).missesRequiredParameters()
+          result.operation.operationSchema.schema.verb === 'get' &&
+          !result.operation.missesRequiredParameters()
       )
       .map(result => {
-        const key = OperationReader.responseBodySchema(result.operation)
-          .map(schema => schema.properties)
-          .map(properties =>
-            Object.entries(properties).find(([_, schema]) =>
-              doesSchemaSemanticsMatch(semanticKey, schema)
-            )
-          )
-          .map(([key]) => key)
-          .getOrUndefined()
+        const responseBodySchema = OperationReader.responseBodySchema(
+          result.operation.operationSchema.schema
+        )
 
-        return {
-          ...result,
-          pathInResponse: key
+        const maybeDirectMatch = responseBodySchema.map(
+          schema => schema['@id'] === semanticKey
+        )
+
+        if (maybeDirectMatch.nonEmpty()) {
+          return { ...result, pathInResponse: '/' }
+        } else {
+          const key = responseBodySchema
+            .map(schema => schema.properties)
+            .map(properties =>
+              Object.entries(properties).find(([_, schema]) =>
+                doesSchemaSemanticsMatch(semanticKey, schema)
+              )
+            )
+            .map(([key]) => key)
+            .getOrUndefined()
+
+          return {
+            ...result,
+            pathInResponse: key
+          }
         }
       })
       .filter(result => result.pathInResponse !== undefined) as {
       pathInResponse: string
       key: string
-      operation: ExpandedOpenAPIV3Semantics.OperationObject
+      operation: ApiOperation
     }[]
 
     if (resourcesContainingValue.length === 1) {
       const toInvoke = resourcesContainingValue[0]
-      const linkedResourceData = await new ApiOperation(
-        toInvoke.operation,
-        this.httpClient
-      ).invoke()
+      const linkedResourceData = await toInvoke.operation.invoke()
 
-      return new SemanticData(
-        linkedResourceData.data.data[toInvoke.pathInResponse],
-        this.apiDocumentation,
-        this.httpClient,
-        linkedResourceData.data.originHttpResponse,
-        linkedResourceData.data?.resourceSchema?.properties?.[
-          toInvoke.pathInResponse
-        ]
-      )
+      if (toInvoke.pathInResponse === '/') {
+        return linkedResourceData.data
+      } else {
+        return new SemanticResource(
+          linkedResourceData.data.data[toInvoke.pathInResponse],
+          this.apiDocumentation,
+          this.httpClient,
+          linkedResourceData.data.originHttpResponse,
+          linkedResourceData.data?.resourceSchema?.properties?.[
+            toInvoke.pathInResponse
+          ]
+        )
+      }
     } else if (resourcesContainingValue.length === 0) {
-      throw new NotFoundDataException()
+      throw new NotFoundDataException(semanticKey)
     } else {
       console.warn(
-        'Found more than one link containing a value for the searched property in SemanticData.getValueFromLinks'
+        'Found more than one link containing a value for the searched property in SemanticResource.getValueFromLinks'
       )
-      throw new NotFoundDataException()
+      throw new NotFoundDataException(semanticKey)
     }
   }
 
@@ -273,8 +332,10 @@ class SemanticData {
         }
       })
       .reduce((acc, v) => acc.concat(v), [])
-      .find(([_, value]: [string, ExpandedOpenAPIV3Semantics.SchemaObject]) =>
-        doesSchemaSemanticsMatch(semanticKey, value)
+      .find(
+        ([_, value]: [string, ExpandedOpenAPIV3Semantics.SchemaObject]) =>
+          doesSchemaSemanticsMatch(semanticKey, value) ||
+          doesSemanticTypeMatch(semanticKey, value)
       )
 
     return Option.ofOptional(result)
@@ -287,7 +348,7 @@ class SemanticData {
         ([key, property]) =>
           [key, this.getInnerValue(property['@id']).getOrUndefined()] as [
             string,
-            SemanticData | SemanticData[] | undefined
+            SemanticResource | SemanticResource[] | undefined
           ]
       )
       .filter(([_, value]) => value !== undefined)
@@ -353,10 +414,10 @@ class SemanticData {
       .reduce((acc, value) => acc.concat(value), [])
   }
 
-  public getDataFromHeaders (semanticKey: DataSemantics): SemanticData[] {
+  public getDataFromHeaders (semanticKey: DataSemantics): SemanticResource[] {
     return this.getHeader(semanticKey).map(
       result =>
-        new SemanticData(
+        new SemanticResource(
           result.value,
           this.apiDocumentation,
           this.httpClient,
@@ -388,16 +449,15 @@ class SemanticData {
         const rel = result.relation as string
         const key: string = rel.slice(rel.lastIndexOf('#') + 1)
 
+        const operationWithUrl = {
+          ...operation,
+          url: result.value
+        } as ExpandedOpenAPIV3Semantics.OperationObject
+
         return {
           key,
-          operation: {
-            ...operation,
-            url: result.value
-          }
-        } as {
-          key: string
-          operation: ExpandedOpenAPIV3Semantics.OperationObject
-        }
+          operation: new ApiOperation(operationWithUrl, this.httpClient)
+        } as PivoRelationObject
       })
   }
 
@@ -450,7 +510,9 @@ class SemanticData {
       }, {})
   }
 
-  private getRelationFromSemantics (semanticRelation: RelationSemantics) {
+  private getRelationFromSemantics (
+    semanticRelation: RelationSemantics
+  ): PivoRelationObject[] {
     const relationsFromHypermediaControls = this.getRelationFromHypermediaControls(
       ([_, schema]) => schema['@relation'] === semanticRelation,
       true
@@ -495,23 +557,24 @@ class SemanticData {
 
         if (operation === undefined) {
           console.warn(
-            `Error found in the documentation: operation with id ${key} does not exist.`
+            `Error found in the documentation: operation with id ${schema?.operationId} does not exist.`
           )
         }
-        return [key, operation] as [
+        return [key, schema, operation] as [
           string,
+          ExpandedOpenAPIV3Semantics.LinkObject,
           ExpandedOpenAPIV3Semantics.OperationObject
         ]
       })
-      .filter(([_, operation]) => operation !== undefined)
+      .filter(([_, __, operation]) => operation !== undefined)
       .filter(
-        ([key, _]) =>
+        ([key]) =>
           availableLinks.includes(key) ||
           availableLinks.find(
             (control: HypermediaControl) => control['relation'] === key
           )
       )
-      .map(([key, operation]) => {
+      .map(([key, linkSchema, operation]) => {
         const controlFromPayload =
           availableLinks[key] ||
           availableLinks.find(
@@ -523,30 +586,45 @@ class SemanticData {
           .ifPresent(schemas =>
             updateRequestBodySchema(
               operation,
-              SemanticDataUtils.findClosestSchema(schemas, controlFromPayload)
+              SemanticResourceUtils.findClosestSchema(
+                schemas,
+                controlFromPayload
+              )
             )
           )
 
-        const operationWithDefaultValues = SemanticDataUtils.addDefaultValuesToOperationSchema(
+        const operationWithDefaultValues = SemanticResourceUtils.addDefaultValuesToOperationSchema(
           controlFromPayload,
-          operation
+          linkSchema,
+          operation,
+          this.originHttpResponse
         )
 
         if (addToReadList && !this.alreadyReadRelations.includes(key)) {
           this.alreadyReadRelations.push(key)
         }
 
-        return { key, operation: operationWithDefaultValues }
+        return {
+          key,
+          operation: new ApiOperation(
+            operationWithDefaultValues,
+            this.httpClient
+          )
+        }
       })
   }
 }
 
-function takeFirst (data: SemanticData | SemanticData[]): SemanticData {
+function takeFirst (
+  data: SemanticResource | SemanticResource[]
+): SemanticResource {
   return data instanceof Array ? data[0] : data
 }
 
-function ensureArray (data: SemanticData | SemanticData[]): SemanticData[] {
+function ensureArray (
+  data: SemanticResource | SemanticResource[]
+): SemanticResource[] {
   return data instanceof Array ? data : [data]
 }
 
-export default SemanticData
+export default SemanticResource

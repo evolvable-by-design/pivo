@@ -1,5 +1,6 @@
 import { OpenAPIV3 } from 'openapi-types'
 import { ExpandedOpenAPIV3Semantics } from './open-api/open-api-types'
+import ApiOperation from './api-operation'
 
 export declare namespace JsonLD {
   interface Context {
@@ -29,7 +30,7 @@ export type PivoParameterSchema = {
 
 export type PivoRelationObject = {
   key: string
-  operation: ExpandedOpenAPIV3Semantics.OperationObject
+  operation: ApiOperation
 }
 
 export type PivoSchemaObject = {
