@@ -1,10 +1,10 @@
 const tokenLocalStorageKey = 'Authorization'
 
-class AuthenticationService {
+class BrowserAuthenticationService {
   static isAuthenticated (): boolean {
     return (
-      AuthenticationService.getToken() !== undefined &&
-      AuthenticationService.getToken() !== null
+      BrowserAuthenticationService.getToken() !== undefined &&
+      BrowserAuthenticationService.getToken() !== null
     )
   }
 
@@ -21,9 +21,36 @@ class AuthenticationService {
   }
 
   static currentTokenWasRefusedByApi () {
-    AuthenticationService.removeToken()
+    BrowserAuthenticationService.removeToken()
   }
 }
+
+class NodeAuthenticationService {
+
+  static token: string | null = null
+
+  static isAuthenticated (): boolean {
+    return NodeAuthenticationService.getToken() !== null
+  }
+
+  static getToken () {
+    return NodeAuthenticationService.token
+  }
+
+  static updateToken (token: string) {
+    NodeAuthenticationService.token = token
+  }
+
+  static removeToken () {
+    NodeAuthenticationService.token = null
+  }
+
+  static currentTokenWasRefusedByApi () {
+    NodeAuthenticationService.removeToken()
+  }
+}
+
+const AuthenticationService = typeof process === 'object' ? NodeAuthenticationService : BrowserAuthenticationService
 
 export default AuthenticationService
 /* 
