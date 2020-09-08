@@ -74,6 +74,10 @@ export function flattenArray<A> (acc: Array<A>, value: Array<A>): Array<A> {
   return acc.concat(value)
 }
 
+export function flatMap<A, B> (array: Array<A>, f: (a: A) => Array<B>): Array<B> {
+  return array.map(f).reduce((acc, v) => acc.concat(v), [])
+}
+
 export function removeQueryAndTrailingSlash (url: string): string {
   const urlWithoutQuery =
     url.indexOf('?') === -1 ? url : url.slice(0, url.indexOf('?'))

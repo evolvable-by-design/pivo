@@ -6,6 +6,7 @@ import DataConstraintsChecker from '../data-constraints-checker'
 import Option from './option'
 import OperationReader from '../open-api/readers/operation-reader'
 import { handleRuntimeExpression } from '../open-api/utils'
+import { flatMap } from './transformation'
 
 export default class SemanticResourceUtils {
   public static doesSchemaMatch (
@@ -140,4 +141,38 @@ export default class SemanticResourceUtils {
       return Option.empty()
     }
   }
+
+  public static flattenObjectProperties (
+    properties: { [name: string]: ExpandedOpenAPIV3Semantics.SchemaObject }
+  ): [string, ExpandedOpenAPIV3Semantics.SchemaObject][] {
+    return flatMap(
+      Object.entries(properties),
+      ([name, schema]) => this.flattenObjectsSchema(name, schema)
+    )
+  }
+
+  public static flattenObjectsSchema (
+    name: string,
+    schema: ExpandedOpenAPIV3Semantics.SchemaObject
+  ): [string, ExpandedOpenAPIV3Semantics.SchemaObject][] {
+    if (schema.type !== 'object') {
+      return [[name, schema]]
+    } else {
+      const children = this.flattenObjectProperties(schema?.properties || {})
+
+      const shouldPrefixNames = schema['x-affiliation'] === 'parent'
+      const prefix = shouldPrefixNames ? `${name}.` : ''
+
+      return children.map(([cKey, cValue]) => [`${prefix}${cKey}`, cValue])
+    }
+  }
+
+  public static getNestedValue (data: object, path: string): any {
+    return path.split('.').reduce((d, fragment) => d[fragment], data)
+  }
+
+  // { first: { second: { third: value }}} -> path = first.second.third.value or first['second']['third']['value']
+  // { second: { third: value }} -> path = second.third.value
+  // { third: value } -> path = third.value
+  // value -> path = value
 }

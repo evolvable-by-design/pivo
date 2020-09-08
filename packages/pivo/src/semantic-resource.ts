@@ -163,9 +163,7 @@ class SemanticResource {
     if (this.isObject()) {
       return this.findPathsToValueAndSchema(semanticKey)
         .flatMap(([key, schema]) => {
-          const value = key.includes('.')
-            ? this.data[key.split('.')[0]][key.split('.')[1]] // TODO: support more nested values
-            : this.data[key]
+          const value = SemanticResourceUtils.getNestedValue(this.data, key)
 
           return value != null
             ? Option.of({ key, schema, value })
@@ -318,20 +316,7 @@ class SemanticResource {
   ): Option<[string, ExpandedOpenAPIV3Semantics.SchemaObject]> {
     const result:
       | [string, ExpandedOpenAPIV3Semantics.SchemaObject]
-      | undefined = Object.entries(this.resourceSchema?.properties || {})
-      .map(([key, value]) => {
-        if (value.type === 'object' && value['x-affiliation'] === 'parent') {
-          return Object.entries(value?.properties || {}).map(
-            ([pKey, pValue]) => [`${key}.${pKey}`, pValue]
-          ) as [string, ExpandedOpenAPIV3Semantics.SchemaObject][]
-        } else {
-          return [[key, value]] as [
-            string,
-            ExpandedOpenAPIV3Semantics.SchemaObject
-          ][]
-        }
-      })
-      .reduce((acc, v) => acc.concat(v), [])
+      | undefined = SemanticResourceUtils.flattenObjectProperties(this.resourceSchema?.properties || {})
       .find(
         ([_, value]: [string, ExpandedOpenAPIV3Semantics.SchemaObject]) =>
           doesSchemaSemanticsMatch(semanticKey, value) ||
