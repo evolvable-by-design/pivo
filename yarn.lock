@@ -284,6 +284,11 @@
     exec-sh "^0.3.2"
     minimist "^1.2.0"
 
+"@evolvable-by-design/pivo@^0.0.2":
+  version "0.0.2"
+  resolved "https://registry.yarnpkg.com/@evolvable-by-design/pivo/-/pivo-0.0.2.tgz#f5d588227c89ccb8a65710d7206f9a995e736cd7"
+  integrity sha512-+azBiJpOi/RA1to871djKvwyUymKnsqNJkw20h+P1G7lO/hZDgEo1DK8c7Uedy4G82UgCW8nSJ2aalWm4jP38w==
+
 "@glimmer/interfaces@^0.41.4":
   version "0.41.4"
   resolved "https://registry.yarnpkg.com/@glimmer/interfaces/-/interfaces-0.41.4.tgz#3f3e26abea8a4e1463130e9a75e94372781d154b"
@@ -3712,9 +3717,9 @@ lodash.uniqby@4.7.0:
   integrity sha1-2ZwHpmnp5tJOE2Lf4mbGdhavEwI=
 
 lodash@^4.17.13, lodash@^4.17.14, lodash@^4.17.15:
-  version "4.17.15"
-  resolved "https://registry.yarnpkg.com/lodash/-/lodash-4.17.15.tgz#b447f6670a0455bbfeedd11392eff330ea097548"
-  integrity sha512-8xOcRHvCjnocdS5cpwXQXVzmmh5e5+saE2QGoeQmbKmRS6J3VQppPOIt0MnmE+4xlZoumy0GPG0D0MVIQbNA1A==
+  version "4.17.19"
+  resolved "https://registry.yarnpkg.com/lodash/-/lodash-4.17.19.tgz#e48ddedbe30b3321783c5b4301fbd353bc1e4a4b"
+  integrity sha512-JNvd8XER9GQX0v2qJgsaN/mzFCNA5BRe/j8JN9d+tWyGLSodKQHKFicdwNYzWwI3wjRnaKPsGj1XkBjx/F96DQ==
 
 log-symbols@^1.0.2:
   version "1.0.2"
