@@ -1,5 +1,5 @@
 import { ExpandedOpenAPIV3Semantics } from './open-api/open-api-types'
-import { schemaToParameters } from './open-api/utils'
+import { schemaPropertiesToParameters } from './open-api/utils'
 import OperationReader from './open-api/readers/operation-reader'
 import Option from './utils/option'
 import { Map, reduceObject } from './utils/transformation'
@@ -13,7 +13,7 @@ export default class OperationSchema {
 
   public getParameters (): ExpandedOpenAPIV3Semantics.ParameterObject[] {
     const parametersFromSchema = this.getRequestBodySchema()
-      .map(s => schemaToParameters(s, 'body'))
+      .map(s => schemaPropertiesToParameters(s, 'body'))
       .getOrElse([])
 
     return [...this.getParametersSchema(), ...parametersFromSchema]

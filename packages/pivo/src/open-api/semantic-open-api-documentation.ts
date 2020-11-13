@@ -35,9 +35,11 @@ export default class SemanticOpenApiDoc {
     const documentationWithoutCuries = JsonLDParser.replaceCuriesWithExpandedUrl(
       refinedDoc
     )
+    console.log(documentationWithoutCuries)
     this.documentation = DocumentExpander.expandDocumentation(
       documentationWithoutCuries
     )
+    console.log('expanded documentation')
   }
 
   public getServerUrl (): Option<string> {

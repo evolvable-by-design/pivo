@@ -7,12 +7,16 @@ import SemanticOpenApiDoc from './open-api/semantic-open-api-documentation'
 import HttpClient from './http-client'
 
 export default class SemanticHttpResponse {
+  readonly status: number
   readonly rawData: any
   constructor (
     readonly data: SemanticResource,
     readonly operationSchema: OperationSchema,
-    readonly request: object
+    readonly request: object,
+    readonly rawResponse: AxiosResponse,
+    readonly isError: boolean,
   ) {
+    this.status = rawResponse.status
     this.rawData = data instanceof Array ? data.map(d => d.data) : data.data
   }
 
@@ -24,7 +28,8 @@ export default class SemanticHttpResponse {
     response: AxiosResponse,
     operation: OperationSchema,
     apiDocumentation: SemanticOpenApiDoc,
-    httpClient: HttpClient
+    httpClient: HttpClient,
+    isError: boolean = false,
   ): SemanticHttpResponse {
     return operation
       .getResponseSchema(response.status)
@@ -57,7 +62,9 @@ export default class SemanticHttpResponse {
         return new SemanticHttpResponse(
           semanticData,
           operation,
-          response.request
+          response.request,
+          response,
+          isError
         )
       })
       .getOrThrow(
@@ -77,7 +84,7 @@ export default class SemanticHttpResponse {
   ): SemanticHttpResponse {
     return Option.ofOptional(error.response)
       .map(response =>
-        this.fromSuccess(response, operation, apiDocumentation, httpClient)
+        this.fromSuccess(response, operation, apiDocumentation, httpClient, true)
       )
       .getOrThrow(
         () =>

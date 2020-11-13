@@ -26,10 +26,9 @@ export function allRequiredParamsHaveAValue (
   parameters: object = {},
   body: object = {}
 ): boolean {
-  const requiredParamWithoutDefaultValue = getQueryParametersWithoutValue(
+  const requiredParamWithoutDefaultValue = getUrlParametersWithoutValue(
     operation,
-    parameters,
-    true
+    parameters
   )
   const foundRequiredParamWithoutDefaultValue =
     requiredParamWithoutDefaultValue.length > 0
@@ -60,25 +59,33 @@ export function allRequiredParamsHaveAValue (
   )
 }
 
-export function getQueryParametersWithoutValue (
+export function getUrlParametersWithoutValue (
   operation: ExpandedOpenAPIV3Semantics.OperationObject,
   parameters: object = {},
-  required: boolean = true
+  requiredOnly: boolean = true
 ): ExpandedOpenAPIV3Semantics.ParameterObject[] {
   return (
     operation?.parameters?.filter(
-      parameter =>
-        parameter.required === required &&
-        parameter?.schema?.default === undefined &&
-        parameters[parameter.name] === undefined
+      parameter => (requiredOnly ? parameter.required : true) &&
+      parameter?.schema?.default === undefined &&
+      parameters[parameter.name] === undefined &&
+      getValueFromSemantics(parameters, parameter["@id"]) === undefined
     ) || []
   )
+}
+
+export function getValueFromSemantics(source: object, semantics: string | string[]): unknown {
+  if (semantics instanceof Array) {
+    return semantics.map(descriptor => source[descriptor]).find(value => value !== undefined)
+  } else {
+    return source[semantics]
+  }
 }
 
 export function getBodyParametersWithoutValue (
   operation: ExpandedOpenAPIV3Semantics.OperationObject,
   body: object = {},
-  required: boolean = true
+  requiredOnly: boolean = true
 ): ExpandedOpenAPIV3Semantics.ParameterObject[] {
   const maybeBodySchema = OpenApiReaders.OperationReader.requestBodySchema(
     operation
@@ -92,18 +99,16 @@ export function getBodyParametersWithoutValue (
     .map(bodySchema => bodySchema.properties)
     .map(properties =>
       Object.entries(properties)
-        .filter(([key]) => !required || requiredArgs.includes(key))
+        .filter(([key]) => !requiredOnly || requiredArgs.includes(key))
         .filter(
           ([key, value]) =>
             value.default === undefined && body[key] === undefined
         )
-        .map(([_, param]) => param)
     )
     .getOrElse([])
 
   return bodyParamsWithoutDefaultValue
-    .map(paramSchema => schemaToParameters(paramSchema, 'body'))
-    .reduce((acc, value) => acc.concat(value), [])
+    .map(([key, schema]) => schemaToParameters(key, schema, 'body', requiredArgs.includes(key)))
 }
 
 export function doesSemanticsMatchOne (
@@ -163,6 +168,22 @@ export function doesSemanticTypeMatch (
 }
 
 export function schemaToParameters (
+  name: string,
+  schema: ExpandedOpenAPIV3Semantics.SchemaObject,
+  from: 'body' | 'path' | 'query' | 'header',
+  required: boolean = false
+): ExpandedOpenAPIV3Semantics.ParameterObject {
+  return {
+    name,
+    in: from,
+    description: schema.description,
+    required: required,
+    schema,
+    '@id': schema['@id']
+  }
+}
+
+export function schemaPropertiesToParameters (
   schema: ExpandedOpenAPIV3Semantics.SchemaObject,
   from: 'body' | 'path' | 'query' | 'header'
 ): ExpandedOpenAPIV3Semantics.ParameterObject[] {

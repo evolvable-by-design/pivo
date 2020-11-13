@@ -167,7 +167,7 @@ export default class SemanticResourceUtils {
     }
   }
 
-  public static getNestedValue (data: object, path: string): any {
+  public static getNestedValue <T, A = any> (data: T, path: string): A {
     return path.split('.').reduce((d, fragment) => d[fragment], data)
   }
 
