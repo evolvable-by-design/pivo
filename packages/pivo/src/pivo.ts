@@ -34,21 +34,21 @@ export default class Pivo {
     }
   }
 
-  public does (action: ActionSemantics): Option<ApiOperation> {
+  public does (action: ActionSemantics, withParameters?: DataSemantics[]): Option<ApiOperation> {
     return this.documentation
-      .findOperation(action)
+      .findOperation(action, withParameters)
       .map(operation => new ApiOperation(operation, this.httpClient))
   }
 
-  public get (data: DataSemantics): Option<ApiOperation> {
+  public get (data: DataSemantics, withParameters?: DataSemantics[]): Option<ApiOperation> {
     return this.documentation
-      .findOperationThatReturns(data)
+      .findOperationThatReturns(data, withParameters)
       .map(operation => new ApiOperation(operation, this.httpClient))
   }
 
-  public list (data: DataSemantics): Option<ApiOperation> {
+  public list (data: DataSemantics, withParameters?: DataSemantics[]): Option<ApiOperation> {
     return this.documentation
-      .findOperationListing(data)
+      .findOperationListing(data, withParameters)
       .map(operation => new ApiOperation(operation, this.httpClient))
   }
 

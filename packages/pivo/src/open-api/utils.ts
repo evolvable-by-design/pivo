@@ -3,6 +3,7 @@ import OpenApiReaders from './readers'
 import Option from '../utils/option'
 import { DataSemantics } from '../domain'
 import { AxiosResponse } from 'axios'
+import { flatMap } from '../utils/transformation'
 
 type SchemaObject = ExpandedOpenAPIV3Semantics.SchemaObject
 
@@ -274,13 +275,8 @@ export function mergeSchema (
   s1: SchemaObject,
   s2: SchemaObject
 ): SchemaObject {
-  const semanticsAsArray: (s: SchemaObject, kind: '@id' | '@type') => string[] =
-    (s, kind) => {
-      const sValue: string | string[] = s[kind] || [] as string[]
-      return sValue instanceof Array ? sValue : [s[kind] as string]
-    }
-  const mergedSemantics = semanticsAsArray(s1, '@id').concat(semanticsAsArray(s2, '@id'))
-  const mergedSemanticType = semanticsAsArray(s1, '@type').concat(semanticsAsArray(s2, '@type'))
+  const mergedSemantics = semanticsAsArray(s1['@id']).concat(semanticsAsArray(s2['@id']))
+  const mergedSemanticType = semanticsAsArray(s1['@type']).concat(semanticsAsArray(s2['@type']))
 
   if (Object.keys(s1).length === 0) {
     return s2
@@ -315,4 +311,30 @@ export function mergeSchema (
   } else {
     return s1
   }
+}
+
+export function countParamsWithSemantics(
+  operation: ExpandedOpenAPIV3Semantics.OperationObject,
+  comparator?: DataSemantics[]
+) {
+  if (comparator !== undefined) {
+    const operationParamsSemantics = flatMap(
+      operation.parameters || [],
+      (param => semanticsAsArray(param['@id']))
+    )    
+    const requestBodySemantics = flatMap(
+      Object.values(operation?.requestBody?.content?.['application/json']?.schema?.properties || {}),
+      (param => param["@id"] instanceof Array ? param["@id"] : [param["@id"]])
+    )
+    const operationParametersSemantics = [ ...operationParamsSemantics, ...requestBodySemantics]
+    return comparator.filter(semantics => operationParametersSemantics.indexOf(semantics) !== -1).length
+  } else {
+    return 0
+  }
+}
+
+function semanticsAsArray (value: string| string[] | undefined): string[] {
+  return value === undefined ? []
+    : value instanceof Array ? value
+    : [value]
 }
