@@ -49,11 +49,10 @@ class SemanticResource<T = any> {
     this.alreadyReadRelations = []
 
     if (resourceSchema?.oneOf) {
-      const schema = resourceSchema.oneOf
-        .sort(
-          SemanticResourceUtils.sortSchemaWithLowerAmountOfRequiredParameters
-        )
-        .find(schema => SemanticResourceUtils.doesSchemaMatch(data, schema))
+      const schemas = [...resourceSchema.oneOf]
+      schemas.sort(SemanticResourceUtils.sortSchemaWithLowerAmountOfRequiredParameters)
+
+      const schema = schemas.find(s => SemanticResourceUtils.doesSchemaMatch(data, s))
 
       this.resourceSchema = schema
       this.type = schema

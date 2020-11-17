@@ -14,8 +14,6 @@ export default class Pivo {
 
   public constructor (documentation: OpenAPIV3.Document, defaultHttpConfig?: AxiosRequestConfig) {
     this.documentation = new SemanticOpenApiDoc(documentation)
-    console.log('Created documentation')
-    console.log(this.documentation)
     this.httpClient = new HttpClient(this.documentation, defaultHttpConfig)
   }
 
@@ -28,10 +26,9 @@ export default class Pivo {
       })
 
       const documentation = response.data
-      console.log(new Pivo(documentation, defaultHttpConfig))
-      console.log('Created pivo instance')
       return new Pivo(documentation, defaultHttpConfig)
     } catch (error) {
+      console.error(error)
       // TODO handle error
       return undefined
     }

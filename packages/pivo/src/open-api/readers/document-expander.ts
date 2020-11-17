@@ -4,10 +4,13 @@ import {
 } from '../open-api-types'
 import * as JsonLDParser from '../../json-ld-parser'
 import { mapObject, Map } from '../../utils/transformation'
+import { mergeSchema } from '../utils'
+
+type SchemaObject = ExpandedOpenAPIV3Semantics.SchemaObject
 
 export default class DocumentExpander {
-  private semanticIdentifiers: Map<string>
-  private semanticTypes: Map<string>
+  private semanticIdentifiers: Map<string | string[]>
+  private semanticTypes: Map<string | string[]>
 
   private constructor (private documentation: OpenAPIV3Semantics.Document) {
     this.semanticIdentifiers = JsonLDParser.getAllSemanticIdentifiers(
@@ -34,15 +37,33 @@ export default class DocumentExpander {
     } else if (value instanceof Object) {
       if (value['$ref']) {
         return this.expand(this.resolveReference(value['$ref']))
+      } else if (value['allOf']) {
+        const refinedEl = this.expand(value['allOf'])
+        const mergedSchemas = (refinedEl as Array<SchemaObject>)
+          .reduce(mergeSchema, {} as SchemaObject)
+
+        return {
+          ...mergedSchemas,
+          '@id': value['@id'] || mergedSchemas['@id'],
+          '@type': value['@type'] || mergedSchemas['@type'],
+          description: value.description || mergedSchemas.description
+        }
       } else {
         return mapObject(value, (key, v) => {
           const refinedEl = this.expand(v)
           if (
             (key === 'parameters' || key === 'properties') &&
-            v instanceof Object &&
-            !(v instanceof Array)
+            refinedEl instanceof Object
           ) {
-            return [key, this.withSemanticsToProperties(refinedEl)]
+            if (refinedEl instanceof Array) {
+              const newV = refinedEl.map(v2 => this.withSemantics(v2.name, v2))
+              return [ key, newV ]
+            } else {
+              const newV = mapObject(refinedEl, (k2, v2) =>
+                [k2, this.withSemantics(k2, v2)]
+              )
+              return [key, newV]
+            }
           } else {
             return [key, refinedEl]
           }
@@ -69,22 +90,21 @@ export default class DocumentExpander {
     return object
   }
 
-  private withSemanticsToProperties (properties: Map<any>) {
-    return mapObject(properties, (key, value) => {
-      if (value instanceof Object && value['@id'] === undefined) {
-        const semantic = this.semanticIdentifiers[key]
-        if (semantic) {
-          value['@id'] = semantic
-        }
+  private withSemantics (key: string, value: any): any {
+    if (value instanceof Object && value['@id'] === undefined) {
+      const semantic = this.semanticIdentifiers[key]
+      if (semantic) {
+        value['@id'] = semantic
       }
+    }
 
-      if (value instanceof Object && value['@type'] === undefined) {
-        const type = this.semanticTypes[key]
-        if (type) {
-          value['@type'] = type
-        }
+    if (value instanceof Object && value['@type'] === undefined) {
+      const type = this.semanticTypes[key]
+      if (type) {
+        value['@type'] = type
       }
-      return [key, value]
-    })
+    }
+
+    return value
   }
 }

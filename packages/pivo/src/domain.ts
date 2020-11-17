@@ -9,7 +9,7 @@ export declare namespace JsonLD {
 
   interface Entry {
     '@id': string | string[]
-    '@type'?: string
+    '@type'?: string | string[]
   }
 
   interface Relation {

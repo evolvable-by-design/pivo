@@ -32,7 +32,7 @@ export function getNamespacesUrl (context: JsonLD.Context): Map<string> {
 function getSemanticMappings (
   document: OpenAPIV3Semantics.Document,
   semanticSelector: (key: string, el: any) => string
-): Map<string> {
+): Map<string | string[]> {
   if (document['@context'] === undefined) {
     return {}
   }
@@ -42,7 +42,6 @@ function getSemanticMappings (
 
   const alias = mapObject(context, (key, value) => {
     const strToCompare = semanticSelector(key, value)
-    console.log(`semanticSelector(${key}, ${value}) = ${strToCompare}`)
     if (strToCompare === undefined) {
       return undefined
     }
@@ -50,29 +49,12 @@ function getSemanticMappings (
     return [key, strToCompare]
   })
 
-  return mapObject(alias, (key, value) => {
-    const valueToKeep: string = value instanceof Array ? value[0] : value
-    return [key, valueToKeep]
-  }) as Map<string>
-
-  // return Object.entries({ ...alias, ...vocabulariesUrl }).reduce(
-  //   (acc, [key, value]) => {
-  //     if (acc[key] !== undefined) {
-  //       console.warn(
-  //         'More than one semantic identifier found for property ' + key
-  //       )
-  //     }
-
-  //     acc[key] = value
-  //     return acc
-  //   },
-  //   {}
-  // )
+  return alias as Map<string | string[]>
 }
 
 export function getAllSemanticIdentifiers (
   document: OpenAPIV3Semantics.Document
-): Map<string> {
+): Map<string | string[]> {
   return getSemanticMappings(document, (_, value) =>
     value instanceof Object ? value['@id'] : value
   )
@@ -80,7 +62,7 @@ export function getAllSemanticIdentifiers (
 
 export function getAllSemanticTypes (
   document: OpenAPIV3Semantics.Document
-): Map<string> {
+): Map<string | string[]> {
   return getSemanticMappings(document, (key, value) =>
     value instanceof Object ? value['@type'] : startsWithUppercase(key) ? value : undefined
   )

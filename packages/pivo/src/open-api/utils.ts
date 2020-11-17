@@ -4,9 +4,11 @@ import Option from '../utils/option'
 import { DataSemantics } from '../domain'
 import { AxiosResponse } from 'axios'
 
+type SchemaObject = ExpandedOpenAPIV3Semantics.SchemaObject
+
 export function updateRequestBodySchema<
   A extends ExpandedOpenAPIV3Semantics.OperationObject
-> (operation: A, schema: ExpandedOpenAPIV3Semantics.SchemaObject): A {
+> (operation: A, schema: SchemaObject): A {
   const operationCopy = Object.assign({}, operation)
 
   Option.ofOptional(operationCopy?.requestBody?.content)
@@ -147,7 +149,7 @@ export function doesSemanticsMatchAll (
 
 export function doesSchemaSemanticsMatch (
   target: DataSemantics | DataSemantics[],
-  schema: ExpandedOpenAPIV3Semantics.SchemaObject
+  schema: SchemaObject
 ) {
   return (
     doesSemanticsMatchOne(target, schema['@id']) ||
@@ -158,7 +160,7 @@ export function doesSchemaSemanticsMatch (
 
 export function doesSemanticTypeMatch (
   target: DataSemantics | DataSemantics[],
-  schema: ExpandedOpenAPIV3Semantics.SchemaObject
+  schema: SchemaObject
 ) {
   return (
     doesSemanticsMatchOne(target, schema['@type']) ||
@@ -169,7 +171,7 @@ export function doesSemanticTypeMatch (
 
 export function schemaToParameters (
   name: string,
-  schema: ExpandedOpenAPIV3Semantics.SchemaObject,
+  schema: SchemaObject,
   from: 'body' | 'path' | 'query' | 'header',
   required: boolean = false
 ): ExpandedOpenAPIV3Semantics.ParameterObject {
@@ -184,7 +186,7 @@ export function schemaToParameters (
 }
 
 export function schemaPropertiesToParameters (
-  schema: ExpandedOpenAPIV3Semantics.SchemaObject,
+  schema: SchemaObject,
   from: 'body' | 'path' | 'query' | 'header'
 ): ExpandedOpenAPIV3Semantics.ParameterObject[] {
   return Option.ofOptional(schema.properties)
@@ -265,5 +267,52 @@ export function resolveJsonPointer (
       data
     )
     return Option.ofOptional(result)
+  }
+}
+
+export function mergeSchema (
+  s1: SchemaObject,
+  s2: SchemaObject
+): SchemaObject {
+  const semanticsAsArray: (s: SchemaObject, kind: '@id' | '@type') => string[] =
+    (s, kind) => {
+      const sValue: string | string[] = s[kind] || [] as string[]
+      return sValue instanceof Array ? sValue : [s[kind] as string]
+    }
+  const mergedSemantics = semanticsAsArray(s1, '@id').concat(semanticsAsArray(s2, '@id'))
+  const mergedSemanticType = semanticsAsArray(s1, '@type').concat(semanticsAsArray(s2, '@type'))
+
+  if (Object.keys(s1).length === 0) {
+    return s2
+  } else if (s1.type === 'object' && s1.type === s2.type) {
+    const mergedProperties = [
+      ...Object.entries(s2.properties || {}),
+      ...Object.entries(s1.properties || {}),
+    ].reduce((acc, [key, value]) => {
+      acc[key] = value
+      return acc
+    }, {})
+
+    return {
+      type: 'object',
+      '@id': mergedSemantics,
+      '@type': mergedSemanticType,
+      required: (s1.required || []).concat(s2.required || []),
+      properties: mergedProperties
+    }
+  } else if (s1.type === 'array' && s1.type === s2.type) {
+    return {
+      type: 'array',
+      '@id': mergedSemantics,
+      '@type': mergedSemanticType,
+      items: {
+        allOf: [
+          s1.items,
+          s2.items
+        ]
+      } as SchemaObject
+    }
+  } else {
+    return s1
   }
 }

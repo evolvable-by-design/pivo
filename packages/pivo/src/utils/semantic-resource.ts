@@ -1,6 +1,6 @@
 import { AxiosResponse } from 'axios'
 
-import { HypermediaData, HypermediaControl } from '../domain'
+import { HypermediaData, HypermediaControl, JsonLD } from '../domain'
 import { ExpandedOpenAPIV3Semantics } from '../open-api/open-api-types'
 import DataConstraintsChecker from '../data-constraints-checker'
 import Option from './option'
@@ -143,28 +143,55 @@ export default class SemanticResourceUtils {
   }
 
   public static flattenObjectProperties (
-    properties: { [name: string]: ExpandedOpenAPIV3Semantics.SchemaObject }
-  ): [string, ExpandedOpenAPIV3Semantics.SchemaObject][] {
+    properties: { [name: string]: ExpandedOpenAPIV3Semantics.SchemaObject },
+    allKeysWithSemantics: Array<[string, JsonLD.Entry['@id'] | undefined]> = this.flattenKeysWithSemantics(properties)
+  ): [string, ExpandedOpenAPIV3Semantics.SchemaObject][] {  
     return flatMap(
       Object.entries(properties),
-      ([name, schema]) => this.flattenObjectsSchema(name, schema)
+      ([name, schema]) => this.flattenObjectsSchema(name, schema, allKeysWithSemantics)
     )
   }
 
   public static flattenObjectsSchema (
     name: string,
-    schema: ExpandedOpenAPIV3Semantics.SchemaObject
+    schema: ExpandedOpenAPIV3Semantics.SchemaObject,
+    allKeysWithSemantics: Array<[string, JsonLD.Entry['@id'] | undefined]>,
   ): [string, ExpandedOpenAPIV3Semantics.SchemaObject][] {
+    function isTheOnlyOneWithThisSemantics(sem: JsonLD.Entry['@id']): boolean {
+      return allKeysWithSemantics
+        .filter(([_, semantics]) => sem !== undefined && sem === semantics)
+        .length === 1
+    }
+
     if (schema.type !== 'object') {
       return [[name, schema]]
+    } else if (schema['x-affiliation'] === 'parent') {
+      return this.flattenObjectProperties(schema?.properties || {}, allKeysWithSemantics)
+        .map(([cKey, cSchema]) => [`${name}.${cKey}`, cSchema])
     } else {
-      const children = this.flattenObjectProperties(schema?.properties || {})
+      const keptChildren: [string, ExpandedOpenAPIV3Semantics.SchemaObject][] =
+        this.flattenObjectProperties(schema?.properties || {}, allKeysWithSemantics)
+          .filter(([_, cSchema]) => isTheOnlyOneWithThisSemantics(cSchema['@id']))
+          .map(([cKey, cSchema]) => [`${name}.${cKey}`, cSchema])
 
-      const shouldPrefixNames = schema['x-affiliation'] === 'parent'
-      const prefix = shouldPrefixNames ? `${name}.` : ''
-
-      return children.map(([cKey, cValue]) => [`${prefix}${cKey}`, cValue])
+      return [[name, schema], ...keptChildren]
     }
+  }
+
+  private static flattenKeysWithSemantics(
+    props: { [name: string]: ExpandedOpenAPIV3Semantics.SchemaObject }
+  ): Array<[string, JsonLD.Entry['@id'] | undefined]> {
+    return flatMap(
+      Object.entries(props),
+      ([name, schema]) => {
+        const selfValues = [[name, schema['@id']]] as [string, string | string[] | undefined][]
+        if (schema.type === 'object' && schema.properties) {
+          return selfValues.concat(this.flattenKeysWithSemantics(schema.properties))
+        } else {
+          return selfValues
+        }
+      }
+    )
   }
 
   public static getNestedValue <T, A = any> (data: T, path: string): A {

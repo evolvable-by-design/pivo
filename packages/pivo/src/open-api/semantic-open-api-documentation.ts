@@ -35,11 +35,10 @@ export default class SemanticOpenApiDoc {
     const documentationWithoutCuries = JsonLDParser.replaceCuriesWithExpandedUrl(
       refinedDoc
     )
-    console.log(documentationWithoutCuries)
     this.documentation = DocumentExpander.expandDocumentation(
       documentationWithoutCuries
     )
-    console.log('expanded documentation')
+    console.log(this.documentation)
   }
 
   public getServerUrl (): Option<string> {
@@ -69,8 +68,8 @@ export default class SemanticOpenApiDoc {
     if (target == null) {
       return Option.empty()
     } else {
-      return this._findOperation(operation => {
-        return OperationReader.responseBodySchema(operation)
+      return this._findOperation((operation, verb) => {
+        return verb === 'get' && OperationReader.responseBodySchema(operation)
           .map(schema => doesSemanticTypeMatch(target, schema))
           .getOrElse(false)
       })
@@ -83,8 +82,8 @@ export default class SemanticOpenApiDoc {
     if (target == null) {
       return Option.empty()
     } else {
-      return this._findOperation(operation => {
-        return OperationReader.responseBodySchema(operation)
+      return this._findOperation((operation, verb) => {
+        return verb === 'get' && OperationReader.responseBodySchema(operation)
           .map(
             schema =>
               schema.type === 'array' &&
