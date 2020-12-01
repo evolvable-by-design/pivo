@@ -13,7 +13,7 @@ export default {
       format: 'es'
     }
   ],
-  external: ['react', 'axios', '@evolvable-by-design/pivo', 'openapi-types'],
+  external: ['react', 'axios', 'openapi-types'],
   plugins: [
     json(),
     typescript({ exclude: '/test/**', useTsconfigDeclarationDir: true }),

@@ -8,6 +8,11 @@ import Option from './utils/option'
 import { ExpandedOpenAPIV3Semantics } from './open-api/open-api-types'
 import Axios, { AxiosRequestConfig, Method } from 'axios'
 
+export type PivoSearchOptions = Readonly<{
+  withParameters?: DataSemantics[],
+  requiredReturnedFields?: DataSemantics[],
+}>
+
 export default class Pivo {
   private httpClient: HttpClient
   private documentation: SemanticOpenApiDoc
@@ -34,21 +39,21 @@ export default class Pivo {
     }
   }
 
-  public does (action: ActionSemantics, withParameters?: DataSemantics[]): Option<ApiOperation> {
+  public does (action: ActionSemantics, options?: PivoSearchOptions): Option<ApiOperation> {
     return this.documentation
-      .findOperation(action, withParameters)
+      .findOperation(action, options)
       .map(operation => new ApiOperation(operation, this.httpClient))
   }
 
-  public get (data: DataSemantics, withParameters?: DataSemantics[]): Option<ApiOperation> {
+  public get (data: DataSemantics, options?: PivoSearchOptions): Option<ApiOperation> {
     return this.documentation
-      .findOperationThatReturns(data, withParameters)
+      .findOperationThatReturns(data, options)
       .map(operation => new ApiOperation(operation, this.httpClient))
   }
 
-  public list (data: DataSemantics, withParameters?: DataSemantics[]): Option<ApiOperation> {
+  public list (data: DataSemantics, options?: PivoSearchOptions): Option<ApiOperation> {
     return this.documentation
-      .findOperationListing(data, withParameters)
+      .findOperationListing(data, options)
       .map(operation => new ApiOperation(operation, this.httpClient))
   }
 

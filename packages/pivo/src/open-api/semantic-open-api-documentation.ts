@@ -15,11 +15,15 @@ import DocumentExpander from './readers/document-expander'
 import OperationReader from './readers/operation-reader'
 import Option from '../utils/option'
 import {
-  doesSemanticsMatchOne,
-  doesSchemaSemanticsMatch,
-  doesSemanticTypeMatch,
   countParamsWithSemantics
 } from './utils'
+import {
+  doesSemanticsMatchOne,
+  doesSchemaSemanticsMatch,
+  doesSemanticTypeMatch
+} from '../utils/semantics'
+import { PivoSearchOptions } from '../pivo'
+import { findPathsToValueAndSchema } from '../utils/schema'
 
 export default class SemanticOpenApiDoc {
   private documentation: ExpandedOpenAPIV3Semantics.Document
@@ -39,7 +43,6 @@ export default class SemanticOpenApiDoc {
     this.documentation = DocumentExpander.expandDocumentation(
       documentationWithoutCuries
     )
-    console.log(this.documentation)
   }
 
   public getServerUrl (): Option<string> {
@@ -51,14 +54,14 @@ export default class SemanticOpenApiDoc {
 
   public findOperation (
     identifier?: string,
-    withParameters?: DataSemantics[]
+    options?: PivoSearchOptions
   ): Option<ExpandedOpenAPIV3Semantics.OperationObject> {
     if (identifier !== undefined) {
       return this._findOperation(
         operation =>
           doesSemanticsMatchOne(identifier, operation['@id']) ||
           operation.operationId === identifier,
-        withParameters
+        options
       )
     } else {
       return Option.empty()
@@ -67,7 +70,7 @@ export default class SemanticOpenApiDoc {
 
   public findOperationThatReturns (
     target?: DataSemantics | DataSemantics[],
-    withParameters?: DataSemantics[]
+    options?: PivoSearchOptions
   ): Option<ExpandedOpenAPIV3Semantics.OperationObject> {
     if (target == null) {
       return Option.empty()
@@ -76,13 +79,13 @@ export default class SemanticOpenApiDoc {
         return verb === 'get' && OperationReader.responseBodySchema(operation)
           .map(schema => doesSemanticTypeMatch(target, schema))
           .getOrElse(false)
-      }, withParameters)
+      }, options)
     }
   }
 
   public findOperationListing (
     target?: DataSemantics | DataSemantics[],
-    withParameters?: DataSemantics[]
+    options?: PivoSearchOptions
   ): Option<ExpandedOpenAPIV3Semantics.OperationObject> {
     if (target == null) {
       return Option.empty()
@@ -95,7 +98,7 @@ export default class SemanticOpenApiDoc {
               doesSchemaSemanticsMatch(target, schema.items)
           )
           .getOrElse(false)
-      }, withParameters)
+      }, options)
     }
   }
 
@@ -126,18 +129,36 @@ export default class SemanticOpenApiDoc {
       verb?: string,
       path?: string
     ) => boolean,
-    withParameters?: DataSemantics[]
+    options?: PivoSearchOptions
   ): Option<ExpandedOpenAPIV3Semantics.OperationObject> {
-    const allOperations = flatMap(
+    type OperationSearchResult = {
+      path: string,
+      verb: string,
+      operation: ExpandedOpenAPIV3Semantics.OperationObject,
+      operations: ExpandedOpenAPIV3Semantics.PathItemObject
+    }
+
+    const allOperations: Array<OperationSearchResult> = flatMap(
       Object.entries(this.documentation.paths),
       ([path, operations]) => Object.entries(operations).map(([verb, operation]) => ({ path, verb, operation, operations }))
     )
-    const operationsMatchingPredicate = allOperations.filter(({ path, verb, operation }) => predicate(operation, verb, path))
+    const operationsMatchingPredicate = allOperations.filter(({ path, verb, operation }) => {
+      const responseSchema = OperationReader.responseBodySchema(operation).getOrUndefined()
+
+      const requiredFields = options?.requiredReturnedFields || []
+      const missingFields = requiredFields.filter(field =>
+        findPathsToValueAndSchema(field, responseSchema).isEmpty()
+      )
+      const doesReturnRequiredFields =
+        options?.requiredReturnedFields === undefined || missingFields.length === 0
+
+      return doesReturnRequiredFields && predicate(operation, verb, path)
+    })
 
     const orderedMatches = operationsMatchingPredicate
       .map((match) => ({
         ...match,
-        matchingParametersCount: countParamsWithSemantics(match.operation, withParameters)
+        matchingParametersCount: countParamsWithSemantics(match.operation, options?.withParameters)
       }))
       .sort((o1, o2) => o2.matchingParametersCount - o1.matchingParametersCount)
     

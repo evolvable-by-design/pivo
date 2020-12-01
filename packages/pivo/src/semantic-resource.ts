@@ -23,9 +23,11 @@ import {
 } from './domain'
 import {
   updateRequestBodySchema,
-  doesSchemaSemanticsMatch,
-  doesSemanticTypeMatch
 } from './open-api/utils'
+import {
+  doesSchemaSemanticsMatch
+} from './utils/semantics'
+import { findPathsToValueAndSchema } from './utils/schema'
 import OperationReader from './open-api/readers/operation-reader'
 import HttpClient from './http-client'
 import { NotFoundDataException } from './errors'
@@ -160,7 +162,7 @@ class SemanticResource<T = any> {
     if (this.data === undefined) return Option.empty()
 
     if (this.isObject()) {
-      return this.findPathsToValueAndSchema(semanticKey)
+      return findPathsToValueAndSchema(semanticKey, this.resourceSchema)
         .flatMap(([key, schema]) => {
           const value = SemanticResourceUtils.getNestedValue(this.data, key)
 
@@ -308,21 +310,6 @@ class SemanticResource<T = any> {
       )
       throw new NotFoundDataException(semanticKey)
     }
-  }
-
-  private findPathsToValueAndSchema (
-    semanticKey: DataSemantics | DataSemantics[]
-  ): Option<[string, ExpandedOpenAPIV3Semantics.SchemaObject]> {
-    const result:
-      | [string, ExpandedOpenAPIV3Semantics.SchemaObject]
-      | undefined = SemanticResourceUtils.flattenObjectProperties(this.resourceSchema?.properties || {})
-      .find(
-        ([_, value]: [string, ExpandedOpenAPIV3Semantics.SchemaObject]) =>
-          doesSchemaSemanticsMatch(semanticKey, value) ||
-          doesSemanticTypeMatch(semanticKey, value)
-      )
-
-    return Option.ofOptional(result)
   }
 
   public getOtherData (): object {
@@ -608,7 +595,7 @@ function takeFirst (
 function ensureArray (
   data: SemanticResource | SemanticResource[]
 ): SemanticResource[] {
-  return data instanceof Array ? data : [data]
+  return data instanceof Array ? data : data.toArray()
 }
 
 export default SemanticResource
