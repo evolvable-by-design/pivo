@@ -3,7 +3,7 @@ import { AxiosRequestConfig } from 'axios'
 import {
   allRequiredParamsHaveAValue,
   getBodyParametersWithoutValue,
-  getQueryParametersWithoutValue
+  getUrlParametersWithoutValue
 } from './open-api/utils'
 import OperationSchema from './operation-schema'
 import * as RequestBuilder from './request-builder'
@@ -11,6 +11,7 @@ import SemanticHttpResponse from './semantic-http-response'
 import { ExpandedOpenAPIV3Semantics } from './open-api/open-api-types'
 import HttpClient from './http-client'
 import { AuthenticationRequiredError } from './errors'
+import PivoUtils from './pivo-utils'
 
 export default class ApiOperation {
   public readonly operationSchema: OperationSchema
@@ -26,12 +27,15 @@ export default class ApiOperation {
 
   public hasParameters = () => this.operationSchema.hasParameters()
 
-  public async invoke (parameters?: object): Promise<SemanticHttpResponse> {
+  public async invoke (parameters?: object, promptForMissingParameters: boolean = true): Promise<SemanticHttpResponse> {
     if (this.operationSchema.schema.userShouldAuthenticate) {
       throw new AuthenticationRequiredError()
     } else {
       // TODO: First, check that parameters are valid
-      const request = this.buildRequest(parameters || {})
+      let params = parameters || {}
+      const valuesOfMissingParams = promptForMissingParameters ? PivoUtils.promptToGetValueOfMissingParameters(this, parameters) : {}
+      params = { ...parameters, ...valuesOfMissingParams }
+      const request = this.buildRequest(params)
       return await this.httpClient.semanticCall(request, this.operationSchema)
     }
   }
@@ -43,31 +47,31 @@ export default class ApiOperation {
 
   public getMissingParameters (
     parameters?: object,
-    required: boolean = true
+    requiredOnly: boolean = true
   ): ExpandedOpenAPIV3Semantics.ParameterObject[] {
     if (parameters === undefined) {
       return this.operationSchema
         .getParameters()
         .filter(
           parameter =>
-            parameter.required === required &&
+            (requiredOnly ? parameter.required : true) &&
             parameter.schema?.default === undefined
         )
     } else {
       const { params, body } = this.computeParamsAndBody(parameters)
-      const missingQueryParams = getQueryParametersWithoutValue(
+      const missingUrlParams = getUrlParametersWithoutValue(
         this.operation,
         params,
-        required
+        requiredOnly
       )
 
       const missingBodyParams = getBodyParametersWithoutValue(
         this.operation,
         body,
-        required
+        requiredOnly
       )
 
-      return missingQueryParams.concat(missingBodyParams)
+      return missingUrlParams.concat(missingBodyParams)
     }
   }
 

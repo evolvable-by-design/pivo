@@ -1,6 +1,6 @@
 const tokenLocalStorageKey = 'Authorization'
 
-class BrowserAuthenticationService {
+export class BrowserAuthenticationService {
   static isAuthenticated (): boolean {
     return (
       BrowserAuthenticationService.getToken() !== undefined &&
@@ -25,7 +25,7 @@ class BrowserAuthenticationService {
   }
 }
 
-class NodeAuthenticationService {
+export class NodeAuthenticationService {
 
   static token: string | null = null
 
@@ -50,7 +50,7 @@ class NodeAuthenticationService {
   }
 }
 
-const AuthenticationService = typeof process === 'object' ? NodeAuthenticationService : BrowserAuthenticationService
+const AuthenticationService = BrowserAuthenticationService
 
 export default AuthenticationService
 /* 

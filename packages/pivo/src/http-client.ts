@@ -8,7 +8,7 @@ import OperationSchema from './operation-schema'
 
 export default class HttpClient {
   private baseUrl: string
-  constructor (private documentation: SemanticOpenApiDoc) {
+  constructor (private documentation: SemanticOpenApiDoc, private defaultHttpConfig?: AxiosRequestConfig) {
     this.baseUrl = documentation
       .getServerUrl()
       .getOrThrow(
@@ -21,7 +21,11 @@ export default class HttpClient {
 
   public async call (options: AxiosRequestConfig): Promise<AxiosResponse<any>> {
     try {
-      return await this.axiosInstance()(options)
+      const response = await this.axiosInstance()({
+        ...options,
+        data: options.data || null // fix a bug that exclude the content-type if undefined
+      })
+      return response
     } catch (error) {
       if (error.response && error.response.status === 401) {
         AuthenticationService.currentTokenWasRefusedByApi()
@@ -37,23 +41,22 @@ export default class HttpClient {
     operation: OperationSchema
     // resultMapper?: any
   ): Promise<SemanticHttpResponse> {
-    return this.call(options)
-      .then(response =>
-        SemanticHttpResponse.fromSuccess(
-          response,
-          operation,
-          this.documentation,
-          this
-        )
+    try {
+      const response = await this.call(options)
+      return SemanticHttpResponse.fromSuccess(
+        response,
+        operation,
+        this.documentation,
+        this
       )
-      .catch(error =>
-        SemanticHttpResponse.fromError(
-          error,
-          operation,
-          this.documentation,
-          this
-        )
+    } catch (error) {
+      return SemanticHttpResponse.fromError(
+        error,
+        operation,
+        this.documentation,
+        this
       )
+    }
   }
 
   async getSemantic (url: string, operation: OperationSchema) {
@@ -61,13 +64,16 @@ export default class HttpClient {
   }
 
   private axiosInstance (): AxiosInstance {
-    return axios.create(this.getDefaultOptions())
+    const defaultConfig = this.defaultHttpConfig || {}
+
+    return axios.create({
+      ...defaultConfig,
+      baseURL: this.baseUrl,
+      headers: { 
+        ...defaultConfig.headers,
+        Authorization: AuthenticationService.getToken(),
+      },
+    })
   }
 
-  private getDefaultOptions () {
-    return {
-      baseURL: this.baseUrl,
-      headers: { Authorization: AuthenticationService.getToken() }
-    }
-  }
 }

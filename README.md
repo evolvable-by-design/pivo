@@ -1,6 +1,6 @@
 # Pivo
 
-> An intent-based programming HTTP client to build evolvable-by-design clients of RESTful APIs
+> An HTTP client to build evolvable-by-design web user interfaces that use RESTful APIs
 
 ## Why Pivo? The problem statement.
 

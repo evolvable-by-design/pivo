@@ -8,17 +8,22 @@ import { OpenAPIV3 } from 'openapi-types'
 import * as JsonLDParser from '../json-ld-parser'
 import {
   matchUrlPattern,
-  mapFind,
-  mergeOptionalArrays
+  mergeOptionalArrays,
+  flatMap
 } from '../utils/transformation'
 import DocumentExpander from './readers/document-expander'
 import OperationReader from './readers/operation-reader'
 import Option from '../utils/option'
 import {
+  countParamsWithSemantics
+} from './utils'
+import {
   doesSemanticsMatchOne,
   doesSchemaSemanticsMatch,
   doesSemanticTypeMatch
-} from './utils'
+} from '../utils/semantics'
+import { PivoSearchOptions } from '../pivo'
+import { findPathsToValueAndSchema } from '../utils/schema'
 
 export default class SemanticOpenApiDoc {
   private documentation: ExpandedOpenAPIV3Semantics.Document
@@ -48,13 +53,15 @@ export default class SemanticOpenApiDoc {
     this.findOperation(target).nonEmpty()
 
   public findOperation (
-    identifier?: string
+    identifier?: string,
+    options?: PivoSearchOptions
   ): Option<ExpandedOpenAPIV3Semantics.OperationObject> {
     if (identifier !== undefined) {
       return this._findOperation(
         operation =>
           doesSemanticsMatchOne(identifier, operation['@id']) ||
-          operation.operationId === identifier
+          operation.operationId === identifier,
+        options
       )
     } else {
       return Option.empty()
@@ -62,34 +69,36 @@ export default class SemanticOpenApiDoc {
   }
 
   public findOperationThatReturns (
-    target?: DataSemantics | DataSemantics[]
+    target?: DataSemantics | DataSemantics[],
+    options?: PivoSearchOptions
   ): Option<ExpandedOpenAPIV3Semantics.OperationObject> {
     if (target == null) {
       return Option.empty()
     } else {
-      return this._findOperation(operation => {
-        return OperationReader.responseBodySchema(operation)
+      return this._findOperation((operation, verb) => {
+        return verb === 'get' && OperationReader.responseBodySchema(operation)
           .map(schema => doesSemanticTypeMatch(target, schema))
           .getOrElse(false)
-      })
+      }, options)
     }
   }
 
   public findOperationListing (
-    target?: DataSemantics | DataSemantics[]
+    target?: DataSemantics | DataSemantics[],
+    options?: PivoSearchOptions
   ): Option<ExpandedOpenAPIV3Semantics.OperationObject> {
     if (target == null) {
       return Option.empty()
     } else {
-      return this._findOperation(operation => {
-        return OperationReader.responseBodySchema(operation)
+      return this._findOperation((operation, verb) => {
+        return verb === 'get' && OperationReader.responseBodySchema(operation)
           .map(
             schema =>
               schema.type === 'array' &&
               doesSchemaSemanticsMatch(target, schema.items)
           )
           .getOrElse(false)
-      })
+      }, options)
     }
   }
 
@@ -108,7 +117,7 @@ export default class SemanticOpenApiDoc {
     const actualOperation = Option.ofOptional(
       typeof operation === 'string'
         ? this.findOperation(operation)
-        : (operation as ExpandedOpenAPIV3Semantics.OperationObject)
+        : operation
     )
 
     return actualOperation.flatMap(OperationReader.responseBodySchema)
@@ -119,39 +128,60 @@ export default class SemanticOpenApiDoc {
       operation: ExpandedOpenAPIV3Semantics.OperationObject,
       verb?: string,
       path?: string
-    ) => boolean
+    ) => boolean,
+    options?: PivoSearchOptions
   ): Option<ExpandedOpenAPIV3Semantics.OperationObject> {
-    return Option.ofOptional(
-      mapFind(
-        Object.entries(this.documentation.paths),
-        ([path, operations]) => {
-          return Option.ofOptional(
-            Object.entries(operations).find(([verb, operation]) =>
-              predicate(operation, verb, path)
-            )
-          )
-            .map(([verb, operation]) => {
-              const parametersOfPath = operations['parameters']
-              let parameters = mergeOptionalArrays(
-                parametersOfPath,
-                operation.parameters
-              )
+    type OperationSearchResult = {
+      path: string,
+      verb: string,
+      operation: ExpandedOpenAPIV3Semantics.OperationObject,
+      operations: ExpandedOpenAPIV3Semantics.PathItemObject
+    }
 
-              const userShouldAuthenticate =
-                operation.security !== undefined &&
-                !AuthService.isAuthenticated()
-
-              return {
-                ...operation,
-                verb,
-                url: path,
-                parameters: parameters,
-                userShouldAuthenticate
-              }
-            })
-            .getOrUndefined()
-        }
-      )
+    const allOperations: Array<OperationSearchResult> = flatMap(
+      Object.entries(this.documentation.paths),
+      ([path, operations]) => Object.entries(operations).map(([verb, operation]) => ({ path, verb, operation, operations }))
     )
+    const operationsMatchingPredicate = allOperations.filter(({ path, verb, operation }) => {
+      const responseSchema = OperationReader.responseBodySchema(operation).getOrUndefined()
+
+      const requiredFields = options?.requiredReturnedFields || []
+      const missingFields = requiredFields.filter(field =>
+        findPathsToValueAndSchema(field, responseSchema).isEmpty()
+      )
+      const doesReturnRequiredFields =
+        options?.requiredReturnedFields === undefined || missingFields.length === 0
+
+      return doesReturnRequiredFields && predicate(operation, verb, path)
+    })
+
+    const orderedMatches = operationsMatchingPredicate
+      .map((match) => ({
+        ...match,
+        matchingParametersCount: countParamsWithSemantics(match.operation, options?.withParameters)
+      }))
+      .sort((o1, o2) => o2.matchingParametersCount - o1.matchingParametersCount)
+    
+    const bestMatch = orderedMatches[0]
+
+    return Option.ofOptional(bestMatch).map(({verb, operation, operations, path}) => {
+      const parametersOfPath = operations['parameters']
+      let parameters = mergeOptionalArrays(
+        parametersOfPath,
+        operation.parameters
+      )
+
+      const userShouldAuthenticate =
+        operation.security !== undefined &&
+        !AuthService.isAuthenticated()
+
+      return {
+        ...operation,
+        verb,
+        url: path,
+        parameters: parameters,
+        userShouldAuthenticate
+      }
+    })
   }
 }

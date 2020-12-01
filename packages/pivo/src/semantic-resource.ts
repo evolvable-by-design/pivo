@@ -23,14 +23,16 @@ import {
 } from './domain'
 import {
   updateRequestBodySchema,
-  doesSchemaSemanticsMatch,
-  doesSemanticTypeMatch
 } from './open-api/utils'
+import {
+  doesSchemaSemanticsMatch
+} from './utils/semantics'
+import { findPathsToValueAndSchema } from './utils/schema'
 import OperationReader from './open-api/readers/operation-reader'
 import HttpClient from './http-client'
 import { NotFoundDataException } from './errors'
 
-class SemanticResource {
+class SemanticResource<T = any> {
   readonly resourceSchema?: ExpandedOpenAPIV3Semantics.SchemaObject
   readonly type?: DataSemantics | DataSemantics[]
 
@@ -38,7 +40,7 @@ class SemanticResource {
   private alreadyReadRelations: string[]
 
   constructor (
-    readonly data: HypermediaData<unknown> | any,
+    readonly data: HypermediaData<T> | T,
     readonly apiDocumentation: SemanticOpenApiDocumentation,
     private httpClient: HttpClient,
     private originHttpResponse: AxiosResponse<any>,
@@ -49,11 +51,10 @@ class SemanticResource {
     this.alreadyReadRelations = []
 
     if (resourceSchema?.oneOf) {
-      const schema = resourceSchema.oneOf
-        .sort(
-          SemanticResourceUtils.sortSchemaWithLowerAmountOfRequiredParameters
-        )
-        .find(schema => SemanticResourceUtils.doesSchemaMatch(data, schema))
+      const schemas = [...resourceSchema.oneOf]
+      schemas.sort(SemanticResourceUtils.sortSchemaWithLowerAmountOfRequiredParameters)
+
+      const schema = schemas.find(s => SemanticResourceUtils.doesSchemaMatch(data, s))
 
       this.resourceSchema = schema
       this.type = schema
@@ -97,13 +98,13 @@ class SemanticResource {
     return !this.isArray() && !this.isObject()
   }
 
-  public resetReadCounter (): SemanticResource {
+  public resetReadCounter (): SemanticResource<T> {
     this.alreadyReadData = []
     this.alreadyReadRelations = []
     return this
   }
 
-  public toArray (): SemanticResource[] {
+  public toArray (): SemanticResource<T>[] {
     if (this.data instanceof Array) {
       return this.data.map(
         d =>
@@ -121,23 +122,23 @@ class SemanticResource {
     }
   }
 
-  async get (semanticKey: DataSemantics): Promise<SemanticResource> {
-    const maybeInnerValue = await this.getInnerValue(semanticKey).toPromise()
+  async get <A = any> (semanticKey: DataSemantics): Promise<SemanticResource<A>> {
+    const maybeInnerValue = await this.getInnerValue<A>(semanticKey).toPromise()
 
     if (maybeInnerValue) return maybeInnerValue
 
     return await this.getValueFromLinks(semanticKey)
   }
 
-  async getOne (semanticKey: DataSemantics): Promise<SemanticResource> {
-    const maybeInnerValue = await this.getInnerValue(semanticKey).toPromise()
+  async getOne <A = any> (semanticKey: DataSemantics): Promise<SemanticResource<A>> {
+    const maybeInnerValue = await this.getInnerValue<A>(semanticKey).toPromise()
 
     if (maybeInnerValue) return takeFirst(maybeInnerValue)
 
     return await this.getValueFromLinks(semanticKey)
   }
 
-  async getArray (semanticKey: DataSemantics): Promise<SemanticResource[]> {
+  async getArray <A = any> (semanticKey: DataSemantics): Promise<Array<SemanticResource<A>>> {
     const maybeInnerValue = await this.getInnerValue(semanticKey).toPromise()
 
     if (maybeInnerValue) return ensureArray(maybeInnerValue)
@@ -145,23 +146,23 @@ class SemanticResource {
     return ensureArray(await this.getValueFromLinks(semanticKey))
   }
 
-  async getOneValue (semanticKey: DataSemantics): Promise<any> {
+  async getOneValue <A = any> (semanticKey: DataSemantics): Promise<A> {
     const semanticData = await this.getOne(semanticKey)
     return semanticData.data
   }
 
-  async getArrayValue (semanticKey: DataSemantics): Promise<any> {
+  async getArrayValue <A = any> (semanticKey: DataSemantics): Promise<Array<A>> {
     const semanticData = await this.getArray(semanticKey)
     return semanticData.map(s => s.data)
   }
 
-  private getInnerValue (
+  private getInnerValue <A = any> (
     semanticKey: DataSemantics | DataSemantics[]
-  ): Option<SemanticResource> {
+  ): Option<SemanticResource<A>> {
     if (this.data === undefined) return Option.empty()
 
     if (this.isObject()) {
-      return this.findPathsToValueAndSchema(semanticKey)
+      return findPathsToValueAndSchema(semanticKey, this.resourceSchema)
         .flatMap(([key, schema]) => {
           const value = SemanticResourceUtils.getNestedValue(this.data, key)
 
@@ -180,7 +181,7 @@ class SemanticResource {
       // Not sure of this yet. This may be thought a bit more.
       return Option.empty()
     } else {
-      return this.type === semanticKey ? Option.of(this) : Option.empty()
+      return this.type === semanticKey ? Option.of(this as unknown as SemanticResource<A>) : Option.empty()
     }
   }
 
@@ -309,21 +310,6 @@ class SemanticResource {
       )
       throw new NotFoundDataException(semanticKey)
     }
-  }
-
-  private findPathsToValueAndSchema (
-    semanticKey: DataSemantics | DataSemantics[]
-  ): Option<[string, ExpandedOpenAPIV3Semantics.SchemaObject]> {
-    const result:
-      | [string, ExpandedOpenAPIV3Semantics.SchemaObject]
-      | undefined = SemanticResourceUtils.flattenObjectProperties(this.resourceSchema?.properties || {})
-      .find(
-        ([_, value]: [string, ExpandedOpenAPIV3Semantics.SchemaObject]) =>
-          doesSchemaSemanticsMatch(semanticKey, value) ||
-          doesSemanticTypeMatch(semanticKey, value)
-      )
-
-    return Option.ofOptional(result)
   }
 
   public getOtherData (): object {
@@ -531,7 +517,7 @@ class SemanticResource {
     addToReadList: boolean
   ): PivoRelationObject[] {
     const responseSchemaLinks = this.responseSchema?.links || {}
-    const availableLinks = this.data._links || []
+    const availableLinks = this.data['_links'] || []
 
     return Object.entries(responseSchemaLinks)
       .filter(filterFct)
@@ -609,7 +595,7 @@ function takeFirst (
 function ensureArray (
   data: SemanticResource | SemanticResource[]
 ): SemanticResource[] {
-  return data instanceof Array ? data : [data]
+  return data instanceof Array ? data : data.toArray()
 }
 
 export default SemanticResource

@@ -9,7 +9,7 @@ import { AxiosError } from 'axios'
 
 import { Map } from '../utils'
 import { JsonLD } from '@evolvable-by-design/pivo/build/domain'
-import { doesSemanticsMatchOne } from '@evolvable-by-design/pivo/build/open-api/utils'
+import { OpenApiUtils } from '@evolvable-by-design/pivo'
 
 type UseOperationResult = {
   parametersDetail: {
@@ -115,7 +115,7 @@ function mapProvidedValueToOperationParameter (
   keys.forEach(([key, semanticKey]: [string, string]) => {
     if (valuesK.includes(key)) {
       res[key] = values[key]
-    } else if (doesSemanticsMatchOne(semanticKey, valuesK)) {
+    } else if (OpenApiUtils.doesSemanticsMatchOne(semanticKey, valuesK)) {
       res[key] = values[semanticKey]
     }
   })

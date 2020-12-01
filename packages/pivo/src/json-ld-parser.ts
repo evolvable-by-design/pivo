@@ -11,7 +11,7 @@ export function replaceCuriesWithExpandedUrl (
 
   const replacements = getNamespacesUrl(document['@context'])
   const documentCopy: OpenAPIV3Semantics.Document = Object.assign({}, document)
-  return replaceIdInObject(documentCopy, replacements)
+  return replace(documentCopy, replacements)
 }
 
 export function getNamespacesUrl (context: JsonLD.Context): Map<string> {
@@ -29,63 +29,42 @@ export function getNamespacesUrl (context: JsonLD.Context): Map<string> {
   return vocabularies
 }
 
-// function findSemanticElWithKeyMappings (
 function getSemanticMappings (
   document: OpenAPIV3Semantics.Document,
-  semanticSelector: (el: any) => string
-): Map<string> {
+  semanticSelector: (key: string, el: any) => string
+): Map<string | string[]> {
   if (document['@context'] === undefined) {
     return {}
   }
 
   const context = document['@context']
-  const vocabulariesUrl = getNamespacesUrl(context)
+  // const vocabulariesUrl = getNamespacesUrl(context)
 
   const alias = mapObject(context, (key, value) => {
-    const strToCompare = semanticSelector(value)
+    const strToCompare = semanticSelector(key, value)
     if (strToCompare === undefined) {
       return undefined
     }
 
-    const vocabName = strToCompare.split(':')[0]
-    const vocabUrl = vocabulariesUrl[vocabName]
-    if (vocabUrl === undefined) {
-      return undefined
-    }
-
-    return [key, strToCompare.replace(`${vocabName}:`, vocabUrl)]
+    return [key, strToCompare]
   })
 
-  return Object.entries({ ...alias, ...vocabulariesUrl }).reduce(
-    (acc, [key, value]) => {
-      if (acc[key] !== undefined) {
-        console.warn(
-          'More than one semantic identifier found for property ' + key
-        )
-      }
-
-      acc[key] = value
-      return acc
-    },
-    {}
-  )
+  return alias as Map<string | string[]>
 }
 
-//export function findSemanticWithKeyMappings (
 export function getAllSemanticIdentifiers (
   document: OpenAPIV3Semantics.Document
-): Map<string> {
-  return getSemanticMappings(document, value =>
+): Map<string | string[]> {
+  return getSemanticMappings(document, (_, value) =>
     value instanceof Object ? value['@id'] : value
   )
 }
 
-// export function findSemanticTypeWithKeyMappings (
 export function getAllSemanticTypes (
   document: OpenAPIV3Semantics.Document
-): Map<string> {
-  return getSemanticMappings(document, value =>
-    value instanceof Object ? value['@type'] : undefined
+): Map<string | string[]> {
+  return getSemanticMappings(document, (key, value) =>
+    value instanceof Object ? value['@type'] : startsWithUppercase(key) ? value : undefined
   )
 }
 
@@ -99,41 +78,8 @@ export const replaceAllVocab: (
   return replaceInObject(Object.assign({}, document), replacements)
 }
 
-function replaceId (value: any, replacements: Map<string>): any {
-  if (value instanceof Array) {
-    return replaceIdInArray(value, replacements)
-  } else if (typeof value === 'string') {
-    return replaceInString(value, replacements)
-  } else {
-    return value
-  }
-}
-
-function searchForReplacement (value: any, replacements: Map<string>): any {
-  if (value instanceof Object && !(value instanceof Array)) {
-    return replaceIdInObject(value, replacements)
-  } else {
-    return value
-  }
-}
-
-function replaceIdInObject<A extends Map<any> | object> (
-  object: A,
-  replacements: Map<string>
-): A {
-  return mapObject(object, (key, value) =>
-    key === '@id' || key === '@type' || key === '@relation'
-      ? [key, replaceId(value, replacements)]
-      : [key, searchForReplacement(value, replacements)]
-  ) as A
-}
-
-function replaceIdInArray (array: any[], replacements: Map<string>) {
-  return array.map(value => replaceId(value, replacements))
-}
-
 function replace<A> (value: A, replacements: Map<string>): A {
-  if (value instanceof Object) {
+  if (value instanceof Object && !(value instanceof Array)) {
     return replaceInObject(value, replacements) as A
   } else if (value instanceof Array) {
     return cast<A>(
@@ -167,4 +113,8 @@ function replaceInString (value: string, replacements: Map<string>): string {
 
   // no replacement found
   return value
+}
+
+function startsWithUppercase(s: string) {
+  return s.charAt(0).toUpperCase() === s.charAt(0)
 }

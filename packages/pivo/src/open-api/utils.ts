@@ -3,10 +3,13 @@ import OpenApiReaders from './readers'
 import Option from '../utils/option'
 import { DataSemantics } from '../domain'
 import { AxiosResponse } from 'axios'
+import { flatMap } from '../utils/transformation'
+
+type SchemaObject = ExpandedOpenAPIV3Semantics.SchemaObject
 
 export function updateRequestBodySchema<
   A extends ExpandedOpenAPIV3Semantics.OperationObject
-> (operation: A, schema: ExpandedOpenAPIV3Semantics.SchemaObject): A {
+> (operation: A, schema: SchemaObject): A {
   const operationCopy = Object.assign({}, operation)
 
   Option.ofOptional(operationCopy?.requestBody?.content)
@@ -26,10 +29,9 @@ export function allRequiredParamsHaveAValue (
   parameters: object = {},
   body: object = {}
 ): boolean {
-  const requiredParamWithoutDefaultValue = getQueryParametersWithoutValue(
+  const requiredParamWithoutDefaultValue = getUrlParametersWithoutValue(
     operation,
-    parameters,
-    true
+    parameters
   )
   const foundRequiredParamWithoutDefaultValue =
     requiredParamWithoutDefaultValue.length > 0
@@ -60,25 +62,33 @@ export function allRequiredParamsHaveAValue (
   )
 }
 
-export function getQueryParametersWithoutValue (
+export function getUrlParametersWithoutValue (
   operation: ExpandedOpenAPIV3Semantics.OperationObject,
   parameters: object = {},
-  required: boolean = true
+  requiredOnly: boolean = true
 ): ExpandedOpenAPIV3Semantics.ParameterObject[] {
   return (
     operation?.parameters?.filter(
-      parameter =>
-        parameter.required === required &&
-        parameter?.schema?.default === undefined &&
-        parameters[parameter.name] === undefined
+      parameter => (requiredOnly ? parameter.required : true) &&
+      parameter?.schema?.default === undefined &&
+      parameters[parameter.name] === undefined &&
+      getValueFromSemantics(parameters, parameter["@id"]) === undefined
     ) || []
   )
+}
+
+export function getValueFromSemantics(source: object, semantics: string | string[]): unknown {
+  if (semantics instanceof Array) {
+    return semantics.map(descriptor => source[descriptor]).find(value => value !== undefined)
+  } else {
+    return source[semantics]
+  }
 }
 
 export function getBodyParametersWithoutValue (
   operation: ExpandedOpenAPIV3Semantics.OperationObject,
   body: object = {},
-  required: boolean = true
+  requiredOnly: boolean = true
 ): ExpandedOpenAPIV3Semantics.ParameterObject[] {
   const maybeBodySchema = OpenApiReaders.OperationReader.requestBodySchema(
     operation
@@ -92,78 +102,36 @@ export function getBodyParametersWithoutValue (
     .map(bodySchema => bodySchema.properties)
     .map(properties =>
       Object.entries(properties)
-        .filter(([key]) => !required || requiredArgs.includes(key))
+        .filter(([key]) => !requiredOnly || requiredArgs.includes(key))
         .filter(
           ([key, value]) =>
             value.default === undefined && body[key] === undefined
         )
-        .map(([_, param]) => param)
     )
     .getOrElse([])
 
   return bodyParamsWithoutDefaultValue
-    .map(paramSchema => schemaToParameters(paramSchema, 'body'))
-    .reduce((acc, value) => acc.concat(value), [])
-}
-
-export function doesSemanticsMatchOne (
-  target: DataSemantics | DataSemantics[],
-  toCompare: DataSemantics | DataSemantics[] | undefined
-): boolean {
-  if (toCompare === undefined) {
-    return false
-  } else if (target instanceof Array) {
-    return (
-      toCompare instanceof Array &&
-      target.find(semantics => toCompare.includes(semantics)) !== undefined
-    )
-  } else {
-    return toCompare instanceof Array
-      ? toCompare.includes(target)
-      : toCompare === target
-  }
-}
-
-export function doesSemanticsMatchAll (
-  target: DataSemantics | DataSemantics[],
-  toCompare: DataSemantics | DataSemantics[]
-) {
-  if (target instanceof Array) {
-    return (
-      toCompare instanceof Array &&
-      target.find(semantics => !toCompare.includes(semantics)) !== undefined
-    )
-  } else {
-    return toCompare instanceof Array
-      ? toCompare.includes(target)
-      : toCompare === target
-  }
-}
-
-export function doesSchemaSemanticsMatch (
-  target: DataSemantics | DataSemantics[],
-  schema: ExpandedOpenAPIV3Semantics.SchemaObject
-) {
-  return (
-    doesSemanticsMatchOne(target, schema['@id']) ||
-    schema?.oneOf?.find(s => doesSemanticsMatchOne(target, s['@id'])) !==
-      undefined
-  )
-}
-
-export function doesSemanticTypeMatch (
-  target: DataSemantics | DataSemantics[],
-  schema: ExpandedOpenAPIV3Semantics.SchemaObject
-) {
-  return (
-    doesSemanticsMatchOne(target, schema['@type']) ||
-    schema?.oneOf?.find(s => doesSemanticsMatchOne(target, s['@type'])) !==
-      undefined
-  )
+    .map(([key, schema]) => schemaToParameters(key, schema, 'body', requiredArgs.includes(key)))
 }
 
 export function schemaToParameters (
-  schema: ExpandedOpenAPIV3Semantics.SchemaObject,
+  name: string,
+  schema: SchemaObject,
+  from: 'body' | 'path' | 'query' | 'header',
+  required: boolean = false
+): ExpandedOpenAPIV3Semantics.ParameterObject {
+  return {
+    name,
+    in: from,
+    description: schema.description,
+    required: required,
+    schema,
+    '@id': schema['@id']
+  }
+}
+
+export function schemaPropertiesToParameters (
+  schema: SchemaObject,
   from: 'body' | 'path' | 'query' | 'header'
 ): ExpandedOpenAPIV3Semantics.ParameterObject[] {
   return Option.ofOptional(schema.properties)
@@ -245,4 +213,72 @@ export function resolveJsonPointer (
     )
     return Option.ofOptional(result)
   }
+}
+
+export function mergeSchema (
+  s1: SchemaObject,
+  s2: SchemaObject
+): SchemaObject {
+  const mergedSemantics = semanticsAsArray(s1['@id']).concat(semanticsAsArray(s2['@id']))
+  const mergedSemanticType = semanticsAsArray(s1['@type']).concat(semanticsAsArray(s2['@type']))
+
+  if (Object.keys(s1).length === 0) {
+    return s2
+  } else if (s1.type === 'object' && s1.type === s2.type) {
+    const mergedProperties = [
+      ...Object.entries(s2.properties || {}),
+      ...Object.entries(s1.properties || {}),
+    ].reduce((acc, [key, value]) => {
+      acc[key] = value
+      return acc
+    }, {})
+
+    return {
+      type: 'object',
+      '@id': mergedSemantics,
+      '@type': mergedSemanticType,
+      required: (s1.required || []).concat(s2.required || []),
+      properties: mergedProperties
+    }
+  } else if (s1.type === 'array' && s1.type === s2.type) {
+    return {
+      type: 'array',
+      '@id': mergedSemantics,
+      '@type': mergedSemanticType,
+      items: {
+        allOf: [
+          s1.items,
+          s2.items
+        ]
+      } as SchemaObject
+    }
+  } else {
+    return s1
+  }
+}
+
+export function countParamsWithSemantics(
+  operation: ExpandedOpenAPIV3Semantics.OperationObject,
+  comparator?: DataSemantics[]
+) {
+  if (comparator !== undefined) {
+    const operationParamsSemantics = flatMap(
+      operation.parameters || [],
+      (param => semanticsAsArray(param['@id']))
+    )    
+    const requestBodySemantics = flatMap(
+      Object.values(operation?.requestBody?.content?.['application/json']?.schema?.properties || {}),
+      (param => param["@id"] instanceof Array ? param["@id"] : [param["@id"]])
+    )
+    const operationParametersSemantics = [ ...operationParamsSemantics, ...requestBodySemantics]
+    return comparator.filter(semantics => operationParametersSemantics.indexOf(semantics) !== -1).length
+  } else {
+    return 0
+  }
+}
+
+function semanticsAsArray (value: string| string[] | undefined): string[] {
+  return value === undefined ? []
+    : value instanceof Array ? value
+    : [value]
 }
