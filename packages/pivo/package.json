@@ -8,6 +8,9 @@
   "main": "./build/index.js",
   "type": "module",
   "types": "./build/index.d.ts",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "scripts": {
     "build": "rollup -c",
     "test": "jest --coverage",
